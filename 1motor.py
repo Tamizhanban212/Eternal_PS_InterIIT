@@ -1,8 +1,3 @@
-sudo apt update
-sudo apt install pigpio python3-pigpio
-sudo systemctl start pigpiod
-
-
 import pigpio
 import time
 
@@ -92,3 +87,4 @@ while True:
     print(f"{rpm:.2f}  {rpm_filtered:.2f}  {target}")
 
     time.sleep(0.02)  # 20 ms sampling
+
