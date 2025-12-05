@@ -1,0 +1,21 @@
+name: eternal
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - opencv
+  - pip
+  - pip:
+    - pyzbar
+    - pigpio
+
+# Notes:
+# - This is a minimal template inferred from the project files.
+# - For Debian/Ubuntu you may need system packages (installed outside conda):
+#     sudo apt install -y libzbar0 pigpio
+#   and start the pigpio daemon:
+#     sudo systemctl enable --now pigpiod
+# - To capture an exact environment from an existing env run:
+#     conda env export --name eternal --no-builds > environment.yml

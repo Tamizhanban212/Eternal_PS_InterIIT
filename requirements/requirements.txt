@@ -1,0 +1,4 @@
+# Additional pip-only requirements (optional)
+# These are provided in case you prefer `pip install -r requirements.txt`.
+pyzbar
+pigpio
