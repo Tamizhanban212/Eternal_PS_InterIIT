@@ -7,10 +7,10 @@ import pigpio
 import time
 
 # ---------------- PIN DEFINITIONS ----------------
-ENCA = 17      # GPIO17 (pin 11)
-ENCB = 27      # GPIO27 (pin 13)
-PWM_PIN = 18   # GPIO18 hardware PWM (pin 12)
-DIR_PIN = 23   # GPIO23 (pin 16)
+ENCA = 17      # GPIO17
+ENCB = 27      # GPIO27
+PWM_PIN = 18   # GPIO18 hardware PWM
+DIR_PIN = 23   # GPIO23
 # -------------------------------------------------
 
 pi = pigpio.pi()
