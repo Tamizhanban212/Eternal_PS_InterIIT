@@ -59,7 +59,7 @@ def set_motor(dir, pwm):
 
 
 # ------------- MAIN LOOP -------------
-target = 100   # target RPM
+target = 30   # target RPM
 kp = 1.5
 ki = 2.5
 
@@ -109,3 +109,4 @@ while True:
     print(f"{rpm:.2f} {rpm_filtered:.2f} {target}")
 
     time.sleep(0.02)   # 20 ms loop
+
