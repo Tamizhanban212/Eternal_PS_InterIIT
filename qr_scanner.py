@@ -100,6 +100,24 @@ def save_grid_to_csv(grid, csv_file='inventory_grid.csv'):
     
     print(f"Grid saved to {csv_file}")
 
+def find_available_camera(max_index=10):
+    """
+    Check camera indices from 0 to max_index and return the first available one.
+    Returns: camera index or None if no camera found
+    """
+    print("Searching for available cameras...")
+    for index in range(max_index):
+        cap = cv2.VideoCapture(index)
+        if cap.isOpened():
+            # Try to read a frame to verify it actually works
+            ret, _ = cap.read()
+            cap.release()
+            if ret:
+                print(f"✓ Found working camera at index {index}")
+                return index
+    print("✗ No working camera found")
+    return None
+
 def scan_qr_codes():
     """
     Real-time QR code scanner using webcam with OpenCV.
@@ -112,8 +130,14 @@ def scan_qr_codes():
     grid = load_grid_from_csv(csv_file)
     print(f"Loaded {len(grid)} entries from {csv_file}")
     
-    # Initialize webcam (0 is usually the default camera)
-    cap = cv2.VideoCapture(1)
+    # Find available camera
+    camera_index = find_available_camera()
+    if camera_index is None:
+        print("Error: Could not find any working camera")
+        return
+    
+    # Initialize webcam with the found index
+    cap = cv2.VideoCapture(camera_index)
     
     # Check if camera opened successfully
     if not cap.isOpened():
