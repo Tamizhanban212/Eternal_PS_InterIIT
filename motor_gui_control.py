@@ -127,7 +127,7 @@ class MotorControlGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Dual Motor Controller")
-        self.root.geometry("500x600")
+        self.root.geometry("500x700")
         self.root.configure(bg='#2b2b2b')
         
         # Initialize GPIO
@@ -250,6 +250,54 @@ class MotorControlGUI:
         self.down_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('backward'))
         self.down_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
         
+        # Single motor control section
+        single_motor_frame = tk.Frame(self.root, bg='#2b2b2b')
+        single_motor_frame.pack(pady=30)
+        
+        single_label = tk.Label(
+            single_motor_frame,
+            text="Single Motor (Level 2)",
+            font=("Arial", 12, "bold"),
+            bg='#2b2b2b',
+            fg='#FF9800'
+        )
+        single_label.pack(pady=5)
+        
+        single_btn_frame = tk.Frame(single_motor_frame, bg='#2b2b2b')
+        single_btn_frame.pack()
+        
+        # Single motor button style
+        single_btn_config = {
+            'font': ("Arial", 14, "bold"),
+            'width': 10,
+            'height': 2,
+            'bg': '#FF9800',
+            'fg': 'white',
+            'activebackground': '#F57C00',
+            'relief': tk.RAISED,
+            'bd': 3
+        }
+        
+        # Single motor forward button
+        self.single_fwd_btn = tk.Button(
+            single_btn_frame,
+            text="⬆ FWD",
+            **single_btn_config
+        )
+        self.single_fwd_btn.pack(side=tk.LEFT, padx=10)
+        self.single_fwd_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('single_forward'))
+        self.single_fwd_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
+        
+        # Single motor backward button
+        self.single_bwd_btn = tk.Button(
+            single_btn_frame,
+            text="⬇ BWD",
+            **single_btn_config
+        )
+        self.single_bwd_btn.pack(side=tk.LEFT, padx=10)
+        self.single_bwd_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('single_backward'))
+        self.single_bwd_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
+        
         # Status display
         self.status_label = tk.Label(
             self.root,
@@ -321,6 +369,18 @@ class MotorControlGUI:
             self.left_motor.ramp_to_speed(speed, 1)
             self.right_motor.ramp_to_speed(speed, -1)
             self.status_label.config(text="Status: TURN RIGHT", fg='#2196F3')
+        
+        elif direction == 'single_forward':
+            speed = SPEED_LEVELS[2]
+            self.left_motor.ramp_to_speed(speed, 1)
+            self.right_motor.stop_smooth()
+            self.status_label.config(text="Status: SINGLE MOTOR FORWARD", fg='#FF9800')
+        
+        elif direction == 'single_backward':
+            speed = SPEED_LEVELS[2]
+            self.left_motor.ramp_to_speed(speed, -1)
+            self.right_motor.stop_smooth()
+            self.status_label.config(text="Status: SINGLE MOTOR BACKWARD", fg='#FF9800')
     
     def on_button_release(self):
         """Handle arrow button release"""
