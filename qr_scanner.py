@@ -1,12 +1,117 @@
 import cv2
 from pyzbar.pyzbar import decode
 import numpy as np
+import csv
+import re
+import os
+from collections import defaultdict
+
+def parse_qr_data(qr_text):
+    """
+    Parse QR code format: R{rack}_S{shelf}_ITM{item}
+    Returns: (rack_number, shelf_number, item_number) or None if invalid
+    """
+    pattern = r'R(\d+)_S(\d+)_ITM(\d+)'
+    match = re.match(pattern, qr_text)
+    if match:
+        rack = int(match.group(1))
+        shelf = int(match.group(2))
+        item = int(match.group(3))
+        return (rack, shelf, item)
+    return None
+
+def load_grid_from_csv(csv_file='inventory_grid.csv'):
+    """
+    Load existing grid from CSV file in matrix format.
+    Returns: dict with (rack, shelf) as key and item number as value
+    Ignores 'NIL' entries.
+    """
+    grid = {}
+    if os.path.exists(csv_file):
+        with open(csv_file, 'r', newline='') as f:
+            reader = csv.reader(f)
+            header = next(reader, None)  # Read header: Database, Shelf_1, Shelf_2, ...
+            
+            if header and len(header) > 1:
+                # Parse shelf numbers from header
+                shelves = []
+                for col in header[1:]:
+                    # Extract number from "Shelf_X"
+                    match = re.match(r'Shelf_(\d+)', col)
+                    if match:
+                        shelves.append(int(match.group(1)))
+                
+                # Read each rack row
+                for row in reader:
+                    if len(row) > 0:
+                        # Extract rack number from "Rack_X"
+                        rack_match = re.match(r'Rack_(\d+)', row[0])
+                        if rack_match:
+                            rack = int(rack_match.group(1))
+                            
+                            # Read items for each shelf
+                            for i, shelf in enumerate(shelves):
+                                if i + 1 < len(row) and row[i + 1].strip() and row[i + 1].strip() != 'NIL':
+                                    try:
+                                        item = int(row[i + 1])
+                                        grid[(rack, shelf)] = item
+                                    except ValueError:
+                                        continue
+    return grid
+
+def save_grid_to_csv(grid, csv_file='inventory_grid.csv'):
+    """
+    Save grid to CSV file in matrix format:
+    Database, Shelf_1, Shelf_2, Shelf_3, ...
+    Rack_1, item, item, item, ...
+    Rack_2, item, item, item, ...
+    
+    Fills in missing racks/shelves with NIL values.
+    """
+    if not grid:
+        # Create empty file with just header
+        with open(csv_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Database'])
+        return
+    
+    # Find max rack and shelf to create complete grid
+    max_rack = max(rack for rack, shelf in grid.keys())
+    max_shelf = max(shelf for rack, shelf in grid.keys())
+    
+    # Create complete range from 1 to max (fills in missing numbers)
+    racks = list(range(1, max_rack + 1))
+    shelves = list(range(1, max_shelf + 1))
+    
+    with open(csv_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        
+        # Write header row: Database, Shelf_1, Shelf_2, ...
+        header = ['Database'] + [f'Shelf_{shelf}' for shelf in shelves]
+        writer.writerow(header)
+        
+        # Write each rack row
+        for rack in racks:
+            row = [f'Rack_{rack}']
+            for shelf in shelves:
+                item = grid.get((rack, shelf), 'NIL')
+                row.append(item)
+            writer.writerow(row)
+    
+    print(f"Grid saved to {csv_file}")
 
 def scan_qr_codes():
     """
     Real-time QR code scanner using webcam with OpenCV.
+    Scans QR codes in format R{rack}_S{shelf}_ITM{item} and updates CSV grid.
     Press 'q' to quit the application.
     """
+    csv_file = 'inventory_grid.csv'
+    
+    # Load existing grid
+    grid = load_grid_from_csv(csv_file)
+    print(f"Loaded {len(grid)} entries from {csv_file}")
+    
     # Initialize webcam (0 is usually the default camera)
     cap = cv2.VideoCapture(0)
     
@@ -17,6 +122,7 @@ def scan_qr_codes():
     
     print("QR Code Scanner Started")
     print("Press 'q' to quit")
+    print("Scanning for format: R{rack}_S{shelf}_ITM{item}")
     
     # Store previously detected codes to avoid repeated detections
     previous_data = None
@@ -67,6 +173,19 @@ def scan_qr_codes():
                 print(f"\n{'='*50}")
                 print(f"QR Code Type: {qr_type}")
                 print(f"Data: {qr_data}")
+                
+                # Parse and update grid
+                parsed = parse_qr_data(qr_data)
+                if parsed:
+                    rack, shelf, item = parsed
+                    grid[(rack, shelf)] = item
+                    print(f"✓ Parsed: Rack {rack}, Shelf {shelf}, Item {item}")
+                    
+                    # Save to CSV after each successful scan
+                    save_grid_to_csv(grid, csv_file)
+                else:
+                    print(f"✗ Invalid format. Expected: R{{rack}}_S{{shelf}}_ITM{{item}}")
+                
                 print(f"{'='*50}")
                 previous_data = qr_data
         
@@ -80,7 +199,11 @@ def scan_qr_codes():
     # Release the capture and close windows
     cap.release()
     cv2.destroyAllWindows()
+    
+    # Final save
+    save_grid_to_csv(grid, csv_file)
     print("\nQR Code Scanner Stopped")
+    print(f"Final grid contains {len(grid)} entries")
 
 if __name__ == "__main__":
     scan_qr_codes()
