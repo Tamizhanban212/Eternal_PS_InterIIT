@@ -113,7 +113,7 @@ def scan_qr_codes():
     print(f"Loaded {len(grid)} entries from {csv_file}")
     
     # Initialize webcam (0 is usually the default camera)
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     
     # Check if camera opened successfully
     if not cap.isOpened():
