@@ -2,8 +2,8 @@
 """
 motor_test.py
 
-Simple test script: runs motor at full speed in reverse for 5 seconds,
-then stops.
+Motor test script: cycles through speed levels 1-5 in forward direction,
+then level 1 in reverse.
 
 Requires pigpiod running: sudo systemctl enable --now pigpiod
 """
@@ -15,8 +15,14 @@ PWM_PIN = 18
 DIR_PIN = 23
 PWM_FREQ = 20000
 
-# Full speed = 100% duty cycle
-FULL_SPEED_DUTY = int(1.00 * 1_000_000)
+# Speed levels (20%, 40%, 60%, 80%, 100%)
+SPEED_LEVELS = {
+    1: int(0.20 * 1_000_000),
+    2: int(0.40 * 1_000_000),
+    3: int(0.60 * 1_000_000),
+    4: int(0.80 * 1_000_000),
+    5: int(1.00 * 1_000_000),
+}
 
 def main():
     pi = pigpio.pi()
@@ -29,16 +35,18 @@ def main():
     pi.set_mode(DIR_PIN, pigpio.OUTPUT)
     
     try:
-        # Reverse (backward) for 5 seconds at full speed
-        print("Running REVERSE at full speed for 5 seconds...")
-        pi.write(DIR_PIN, 0)  # Reverse direction
-        pi.hardware_PWM(PWM_PIN, PWM_FREQ, FULL_SPEED_DUTY)
-        time.sleep(5)
-        
-        # Forward for 5 seconds at full speed
-        print("Running FORWARD at full speed for 5 seconds...")
+        # Forward direction: cycle through levels 1-5
         pi.write(DIR_PIN, 1)  # Forward direction
-        pi.hardware_PWM(PWM_PIN, PWM_FREQ, FULL_SPEED_DUTY)
+        
+        for level in range(1, 6):
+            print(f"Running FORWARD at level {level} speed for 5 seconds...")
+            pi.hardware_PWM(PWM_PIN, PWM_FREQ, SPEED_LEVELS[level])
+            time.sleep(5)
+        
+        # Reverse direction: level 1
+        print("Running REVERSE at level 1 speed for 5 seconds...")
+        pi.write(DIR_PIN, 0)  # Reverse direction
+        pi.hardware_PWM(PWM_PIN, PWM_FREQ, SPEED_LEVELS[1])
         time.sleep(5)
         
         # Stop

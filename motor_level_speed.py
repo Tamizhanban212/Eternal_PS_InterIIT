@@ -30,8 +30,8 @@ import sys
 
 
 # --- Configuration ---
-PWM_PIN = 23    # hardware PWM pin (GPIO18) - change if needed
-DIR_PIN = 24    # direction control pin
+PWM_PIN = 18    # hardware PWM pin (GPIO18) - change if needed
+DIR_PIN = 23    # direction control pin
 PWM_FREQ = 20000  # 20 kHz PWM
 
 # Map levels 1..5 to duty cycle (microseconds fraction for pigpio: 0..1_000_000)
