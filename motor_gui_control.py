@@ -32,6 +32,10 @@ LEFT_DIR_PIN = 16
 RIGHT_PWM_PIN = 18
 RIGHT_DIR_PIN = 23
 
+# Z-axis motor pins
+Z_PWM_PIN = 13
+Z_DIR_PIN = 19
+
 PWM_FREQ = 1000  # 1 kHz
 
 # Speed levels (duty cycle %)
@@ -136,6 +140,7 @@ class MotorControlGUI:
         
         self.left_motor = Motor(LEFT_PWM_PIN, LEFT_DIR_PIN, "Left")
         self.right_motor = Motor(RIGHT_PWM_PIN, RIGHT_DIR_PIN, "Right")
+        self.z_motor = Motor(Z_PWM_PIN, Z_DIR_PIN, "Z-Axis")
         
         self.current_level = 3
         self.active_direction = None
