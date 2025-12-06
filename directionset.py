@@ -5,8 +5,8 @@ Motor control with encoder feedback (PI controller) for Raspberry Pi.
 Pins (BCM):
 ENCA = 17      # encoder A (GPIO17 pin 11)
 ENCB = 27      # encoder B (GPIO27 pin 13)
-PWM_PIN = 23   # GPIO18 (hardware PWM) (pin 12)
-DIR_PIN = 24   # GPIO23 (pin 16)
+PWM_PIN = 18   # GPIO18 (hardware PWM) (pin 12)
+DIR_PIN = 23   # GPIO23 (pin 16)
 """
 
 import pigpio
