@@ -10,12 +10,14 @@ Features:
 - Down Arrow = Backward (both motors)
 - Left Arrow = Turn Left (left motor backward, right motor forward at level 2)
 - Right Arrow = Turn Right (left motor forward, right motor backward at level 2)
+- Z-axis control buttons (UP/DOWN at level 2)
 - Speed level slider (1-5)
 - Smooth acceleration/deceleration over 500ms (trapezoidal profile)
 
 Wiring:
   Left Motor: PWM=12, DIR=16
   Right Motor: PWM=18, DIR=23
+  Z-Axis Motor: PWM=13, DIR=19
 """
 import RPi.GPIO as GPIO
 import tkinter as tk
@@ -255,24 +257,24 @@ class MotorControlGUI:
         self.down_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('backward'))
         self.down_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
         
-        # Single motor control section
-        single_motor_frame = tk.Frame(self.root, bg='#2b2b2b')
-        single_motor_frame.pack(pady=30)
+        # Z-axis motor control section
+        z_motor_frame = tk.Frame(self.root, bg='#2b2b2b')
+        z_motor_frame.pack(pady=30)
         
-        single_label = tk.Label(
-            single_motor_frame,
-            text="Single Motor (Level 2)",
+        z_label = tk.Label(
+            z_motor_frame,
+            text="Z-Axis Control (Level 2)",
             font=("Arial", 12, "bold"),
             bg='#2b2b2b',
             fg='#FF9800'
         )
-        single_label.pack(pady=5)
+        z_label.pack(pady=5)
         
-        single_btn_frame = tk.Frame(single_motor_frame, bg='#2b2b2b')
-        single_btn_frame.pack()
+        z_btn_frame = tk.Frame(z_motor_frame, bg='#2b2b2b')
+        z_btn_frame.pack()
         
-        # Single motor button style
-        single_btn_config = {
+        # Z-axis button style
+        z_btn_config = {
             'font': ("Arial", 14, "bold"),
             'width': 10,
             'height': 2,
@@ -283,25 +285,25 @@ class MotorControlGUI:
             'bd': 3
         }
         
-        # Single motor forward button
-        self.single_fwd_btn = tk.Button(
-            single_btn_frame,
-            text="⬆ FWD",
-            **single_btn_config
+        # Z-axis up button
+        self.z_up_btn = tk.Button(
+            z_btn_frame,
+            text="⬆ UP",
+            **z_btn_config
         )
-        self.single_fwd_btn.pack(side=tk.LEFT, padx=10)
-        self.single_fwd_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('single_forward'))
-        self.single_fwd_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
+        self.z_up_btn.pack(side=tk.LEFT, padx=10)
+        self.z_up_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('z_up'))
+        self.z_up_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
         
-        # Single motor backward button
-        self.single_bwd_btn = tk.Button(
-            single_btn_frame,
-            text="⬇ BWD",
-            **single_btn_config
+        # Z-axis down button
+        self.z_down_btn = tk.Button(
+            z_btn_frame,
+            text="⬇ DOWN",
+            **z_btn_config
         )
-        self.single_bwd_btn.pack(side=tk.LEFT, padx=10)
-        self.single_bwd_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('single_backward'))
-        self.single_bwd_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
+        self.z_down_btn.pack(side=tk.LEFT, padx=10)
+        self.z_down_btn.bind('<ButtonPress-1>', lambda e: self.on_button_press('z_down'))
+        self.z_down_btn.bind('<ButtonRelease-1>', lambda e: self.on_button_release())
         
         # Status display
         self.status_label = tk.Label(
@@ -375,23 +377,22 @@ class MotorControlGUI:
             self.right_motor.ramp_to_speed(speed, -1)
             self.status_label.config(text="Status: TURN RIGHT", fg='#2196F3')
         
-        elif direction == 'single_forward':
+        elif direction == 'z_up':
             speed = SPEED_LEVELS[2]
-            self.left_motor.ramp_to_speed(speed, 1)
-            self.right_motor.stop_smooth()
-            self.status_label.config(text="Status: SINGLE MOTOR FORWARD", fg='#FF9800')
+            self.z_motor.ramp_to_speed(speed, 1)
+            self.status_label.config(text="Status: Z-AXIS UP", fg='#FF9800')
         
-        elif direction == 'single_backward':
+        elif direction == 'z_down':
             speed = SPEED_LEVELS[2]
-            self.left_motor.ramp_to_speed(speed, -1)
-            self.right_motor.stop_smooth()
-            self.status_label.config(text="Status: SINGLE MOTOR BACKWARD", fg='#FF9800')
+            self.z_motor.ramp_to_speed(speed, -1)
+            self.status_label.config(text="Status: Z-AXIS DOWN", fg='#FF9800')
     
     def on_button_release(self):
         """Handle arrow button release"""
         self.active_direction = None
         self.left_motor.stop_smooth()
         self.right_motor.stop_smooth()
+        self.z_motor.stop_smooth()
         self.status_label.config(text="Status: STOPPING", fg='#FF9800')
         
         # Update to STOPPED after ramp time
@@ -404,6 +405,7 @@ class MotorControlGUI:
         self.active_direction = None
         self.left_motor.stop_immediate()
         self.right_motor.stop_immediate()
+        self.z_motor.stop_immediate()
         self.status_label.config(text="Status: EMERGENCY STOP", fg='#f44336')
     
     def on_closing(self):
@@ -411,6 +413,7 @@ class MotorControlGUI:
         print("Shutting down...")
         self.left_motor.cleanup()
         self.right_motor.cleanup()
+        self.z_motor.cleanup()
         GPIO.cleanup()
         self.root.destroy()
     
