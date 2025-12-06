@@ -2,8 +2,8 @@
 """
 motor_test.py
 
-Simple test script: runs motor at half speed forward for 5 seconds,
-then backward for 5 seconds, then stops.
+Simple test script: runs motor at full speed in reverse for 5 seconds,
+then stops.
 
 Requires pigpiod running: sudo systemctl enable --now pigpiod
 """
@@ -15,8 +15,8 @@ PWM_PIN = 18
 DIR_PIN = 23
 PWM_FREQ = 20000
 
-# Half speed = 50% duty cycle
-HALF_SPEED_DUTY = int(0.50 * 1_000_000)
+# Full speed = 100% duty cycle
+FULL_SPEED_DUTY = int(1.00 * 1_000_000)
 
 def main():
     pi = pigpio.pi()
@@ -29,16 +29,10 @@ def main():
     pi.set_mode(DIR_PIN, pigpio.OUTPUT)
     
     try:
-        # Forward for 5 seconds
-        print("Running FORWARD at half speed for 5 seconds...")
-        pi.write(DIR_PIN, 1)  # Forward direction
-        pi.hardware_PWM(PWM_PIN, PWM_FREQ, HALF_SPEED_DUTY)
-        time.sleep(5)
-        
-        # Backward for 5 seconds
-        print("Running BACKWARD at half speed for 5 seconds...")
-        pi.write(DIR_PIN, 0)  # Backward direction
-        pi.hardware_PWM(PWM_PIN, PWM_FREQ, HALF_SPEED_DUTY)
+        # Reverse (backward) for 5 seconds at full speed
+        print("Running REVERSE at full speed for 5 seconds...")
+        pi.write(DIR_PIN, 0)  # Reverse direction
+        pi.hardware_PWM(PWM_PIN, PWM_FREQ, FULL_SPEED_DUTY)
         time.sleep(5)
         
         # Stop
