@@ -1,5 +1,3 @@
-
-
 import pigpio
 import time
 
@@ -32,6 +30,10 @@ prev_t = time.perf_counter()
 rpm_filtered = 0
 eintegral = 0
 
+# ------------------ CONSTANTS -------------------
+CPR = 676
+QUAD_CPR = CPR * 4      # = 2704 counts per full shaft revolution
+
 # ------------------ ENCODER ISR -------------------
 def encoder_callback(channel, level, tick):
     global encoder_count
@@ -62,9 +64,9 @@ while True:
     delta = count - prev_count
     prev_count = count
 
-    # Convert to RPM (same formula)
-    cps = delta / dt
-    rpm = (cps / 1278.75) * 60.0
+    # Convert encoder delta to RPM using CPR=676
+    cps = delta / dt                   # counts per second
+    rpm = (cps / QUAD_CPR) * 60.0      # QUAD_CPR = 2704
 
     # Low-pass filter
     alpha = 0.2
@@ -81,11 +83,10 @@ while True:
 
     # Direction & PWM
     direction = 1 if u >= 0 else -1
-    pwm = abs(int(u))
-    pwm = min(pwm, 255)
+    pwm = min(abs(int(u)), 255)
 
     set_motor(direction, pwm)
 
-    print(f"{rpm:.2f}  {rpm_filtered:.2f}  {target}")
+    print(f"RPM: {rpm:.2f} | Filtered: {rpm_filtered:.2f} | Target: {target}")
 
-    time.sleep(0.02)  # 20 ms sampling
+    time.sleep(0.02)  # 20 ms
