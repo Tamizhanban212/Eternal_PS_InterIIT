@@ -15,7 +15,7 @@ COUNTS_PER_REV = CPR * 4  # quadrature (A+B, rising/falling) = 2704
 # -------------------------------------------------
 
 # PID & motor settings
-TARGET_RPM = 50.0         # desired speed
+TARGET_RPM = 100.0         # desired speed
 KP = 2.0
 KI = 8.0
 MAX_PWM = 255
@@ -159,3 +159,4 @@ finally:
     stop_motor()
     cb.cancel()
     pi.stop()
+
