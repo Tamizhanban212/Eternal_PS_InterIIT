@@ -1,111 +1,106 @@
+import RPi.GPIO as GPIO
 import pigpio
 import time
-import signal
-import sys
+import threading
 
-# ---------------- PIN DEFINITIONS ----------------
-ENCA = 17      # GPIO17 (pin 11)
-ENCB = 27      # GPIO27 (pin 13)
-PWM_PIN = 18   # GPIO18 hardware PWM (pin 12)
-DIR_PIN = 23   # GPIO23 (pin 16)
-# -------------------------------------------------
+# ---------------- GPIO PINS ----------------
+ENCA = 17     # Encoder A
+ENCB = 27     # Encoder B
+PWM_PIN = 18  # Hardware PWM pin
+DIR_PIN = 23  # Direction pin
 
-# Motor specs
-CPR = 676  # Counts per revolution at output shaft
-
-pi = pigpio.pi()
-if not pi.connected:
-    sys.exit("pigpiod not running")
-
-# Motor pins
-pi.set_mode(PWM_PIN, pigpio.OUTPUT)
-pi.set_mode(DIR_PIN, pigpio.OUTPUT)
-
-# Encoder pins
-pi.set_mode(ENCA, pigpio.INPUT)
-pi.set_mode(ENCB, pigpio.INPUT)
-pi.set_pull_up_down(ENCA, pigpio.PUD_UP)
-pi.set_pull_up_down(ENCB, pigpio.PUD_UP)
-
-# Globals
+# ---------------- GLOBAL VARIABLES ----------------
 encoder_count = 0
-prev_count = 0
-prev_t = time.perf_counter()
-rpm_filtered = 0
-eintegral = 0
+prev_time = time.time()
+rpm = 0
 
-# ------------------ ENCODER ISR -------------------
-def encoder_callback(channel, level, tick):
+# Motor & encoder constants
+PULSES_PER_REV = 200     # <-- change based on encoder spec
+TARGET_RPM = 30          # set desired speed
+
+# PID constants
+Kp = 1.2
+Ki = 0.4
+Kd = 0.05
+
+integral = 0
+prev_error = 0
+
+# ---------------- ENCODER ISR ----------------
+def encoder_callback(channel):
     global encoder_count
-    b = pi.read(ENCB)
-    encoder_count += 1 if b == 1 else -1
+    if GPIO.input(ENCA) == GPIO.input(ENCB):
+        encoder_count += 1
+    else:
+        encoder_count -= 1
 
-cb = pi.callback(ENCA, pigpio.RISING_EDGE, encoder_callback)
+# ---------------- RPM MEASUREMENT THREAD ----------------
+def rpm_measurement():
+    global encoder_count, prev_time, rpm
 
-# ------------------ MOTOR CONTROL ------------------
-def set_motor(dir, pwm):
-    pi.write(DIR_PIN, 1 if dir == 1 else 0)
-    pwm = max(0, min(pwm, 255))
-    pi.hardware_PWM(PWM_PIN, 20000, int((pwm / 255) * 1000000))
+    prev_count = 0
+    while True:
+        time.sleep(0.1)  # 100ms
+        now = time.time()
 
-# ------------------ CLEANUP HANDLER ---------------
-def cleanup(signal, frame):
-    print("\nStopping motor...")
-    set_motor(0, 0)
-    cb.cancel()
-    pi.stop()
-    sys.exit(0)
+        delta_count = encoder_count - prev_count
+        prev_count = encoder_count
 
-signal.signal(signal.SIGINT, cleanup)
+        dt = now - prev_time
+        prev_time = now
 
-# ------------------ MAIN LOOP ----------------------
-target = 50.0  # target RPM
-kp = 0.8       # Proportional gain
-ki = 3.0       # Integral gain
+        revs = delta_count / PULSES_PER_REV
+        rpm = (revs / dt) * 60
 
-print(f"Target RPM: {target}")
-print("Ctrl+C to stop")
+# ---------------- PID SPEED CONTROL THREAD ----------------
+def speed_control(pi):
+    global integral, prev_error, rpm
 
-while True:
-    count = encoder_count
-    curr_t = time.perf_counter()
-    dt = curr_t - prev_t
-    if dt < 0.001:  # Skip very small timesteps
-        time.sleep(0.001)
-        continue
-    prev_t = curr_t
+    while True:
+        error = TARGET_RPM - rpm
+        integral += error * 0.1
+        derivative = (error - prev_error) / 0.1
+        prev_error = error
 
-    delta = count - prev_count
-    prev_count = count
+        control_signal = Kp * error + Ki * integral + Kd * derivative
 
-    # Convert to RPM
-    cps = delta / dt
-    rpm = (cps / CPR) * 60.0
+        # clamp between 0–100%
+        duty = max(0, min(100, control_signal))
 
-    # Low-pass filter
-    alpha = 0.2
-    rpm_filtered = alpha * rpm + (1 - alpha) * rpm_filtered
+        pi.set_PWM_dutycycle(PWM_PIN, int(duty * 255 / 100))
 
-    # PI control
-    error = target - rpm_filtered
-    u_p = kp * error + ki * eintegral
+        time.sleep(0.1)
 
-    # Anti-windup
-    if not (u_p >= 255 and error > 0) and not (u_p <= -255 and error < 0):
-        eintegral += error * dt
-        u_p = kp * error + ki * eintegral
+# ---------------- MAIN PROGRAM ----------------
+def main():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(ENCA, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(ENCB, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(DIR_PIN, GPIO.OUT)
+    GPIO.output(DIR_PIN, GPIO.HIGH)
 
-    # Output limits and direction
-    direction = 1 if u_p >= 0 else -1
-    pwm = abs(int(u_p))
-    pwm = min(pwm, 255)
-    
-    # Minimum PWM for static friction
-    if 0 < pwm < 40:
-        pwm = 40
+    GPIO.add_event_detect(ENCA, GPIO.BOTH, callback=encoder_callback)
+    GPIO.add_event_detect(ENCB, GPIO.BOTH, callback=encoder_callback)
 
-    set_motor(direction, pwm)
+    pi = pigpio.pi()
+    pi.set_PWM_frequency(PWM_PIN, 20000)  # 20 kHz PWM
+    pi.set_PWM_range(PWM_PIN, 255)
 
-    print(f"Raw: {rpm:.1f} | Filt: {rpm_filtered:.1f} | Err: {error:.1f} | PWM: {pwm}")
+    print("Starting motor control...")
 
-    time.sleep(0.02)  # 50 Hz loop
+    # Start threads
+    threading.Thread(target=rpm_measurement, daemon=True).start()
+    threading.Thread(target=speed_control, args=(pi,), daemon=True).start()
+
+    try:
+        while True:
+            print(f"RPM = {rpm:.2f}")
+            time.sleep(0.3)
+
+    except KeyboardInterrupt:
+        print("Stopping motor...")
+        pi.set_PWM_dutycycle(PWM_PIN, 0)
+        GPIO.cleanup()
+
+if __name__ == "__main__":
+    main()
