@@ -35,6 +35,12 @@ def main():
         pi.hardware_PWM(PWM_PIN, PWM_FREQ, FULL_SPEED_DUTY)
         time.sleep(5)
         
+        # Forward for 5 seconds at full speed
+        print("Running FORWARD at full speed for 5 seconds...")
+        pi.write(DIR_PIN, 1)  # Forward direction
+        pi.hardware_PWM(PWM_PIN, PWM_FREQ, FULL_SPEED_DUTY)
+        time.sleep(5)
+        
         # Stop
         print("Stopping motor...")
         pi.hardware_PWM(PWM_PIN, PWM_FREQ, 0)
