@@ -27,12 +27,12 @@ import time
 
 # --- Configuration ---
 # Left motor pins
-LEFT_PWM_PIN = 18
-LEFT_DIR_PIN = 23
+LEFT_PWM_PIN = 12
+LEFT_DIR_PIN = 16
 
 # Right motor pins
-RIGHT_PWM_PIN = 12
-RIGHT_DIR_PIN = 16
+RIGHT_PWM_PIN = 18
+RIGHT_DIR_PIN = 23
 
 # Z-axis motor pins
 Z_PWM_PIN = 13
