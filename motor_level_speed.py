@@ -34,11 +34,11 @@ PWM_FREQ = 1000  # 1 kHz PWM frequency
 
 # Speed levels mapping (duty cycle %)
 SPEED_LEVELS = {
-    1: 20,
-    2: 40,
+    1: 100,
+    2: 80,
     3: 60,
-    4: 80,
-    5: 100,
+    4: 40,
+    5: 20,
 }
 
 # Setup GPIO
