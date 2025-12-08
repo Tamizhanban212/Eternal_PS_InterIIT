@@ -106,6 +106,7 @@ class MotorController:
     def setBothMotors(self, rpm1, rpm2, time1, time2):
         """
         Set different RPMs and durations for each motor independently
+        Includes 0.5 second ramp-up and ramp-down for smooth acceleration/deceleration
         
         Args:
             rpm1: Target RPM for motor 1
@@ -116,11 +117,10 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        # Set both motors to their respective RPMs
-        self.setRPM(rpm1, rpm2)
+        ramp_duration = 0.5  # 0.5 seconds for ramp-up and ramp-down
+        ramp_steps = 10  # Number of steps in the ramp
+        ramp_step_time = ramp_duration / ramp_steps
         
-        # Run for the maximum duration to capture both motors
-        max_time = max(time1, time2)
         start = time.time()
         final_d1, final_d2 = None, None
         
@@ -128,23 +128,53 @@ class MotorController:
         motor1_stopped = False
         motor2_stopped = False
         
+        # Ramp-up phase (0.5 seconds)
+        for i in range(1, ramp_steps + 1):
+            factor = i / ramp_steps
+            current_rpm1 = rpm1 * factor
+            current_rpm2 = rpm2 * factor
+            self.setRPM(current_rpm1, current_rpm2)
+            time.sleep(ramp_step_time)
+        
+        # Set to target RPM
+        self.setRPM(rpm1, rpm2)
+        
+        # Run for the maximum duration (minus ramp times)
+        max_time = max(time1, time2)
+        
         while time.time() - start < max_time:
             elapsed = time.time() - start
             
-            # Stop motor 1 when its time is up
-            if not motor1_stopped and elapsed >= time1:
-                self.arduino.write(f"0,{rpm2}\n".encode('utf-8'))
-                motor1_stopped = True
+            # Start ramp-down for motor 1 when approaching time1
+            if not motor1_stopped and elapsed >= time1 - ramp_duration:
+                if elapsed >= time1:
+                    motor1_stopped = True
+                else:
+                    # Ramp down motor 1
+                    remaining = time1 - elapsed
+                    factor = remaining / ramp_duration
+                    current_rpm1 = rpm1 * factor
+                    current_rpm2 = rpm2 if not motor2_stopped else 0
+                    self.setRPM(current_rpm1, current_rpm2)
             
-            # Stop motor 2 when its time is up
-            if not motor2_stopped and elapsed >= time2:
-                self.arduino.write(f"{rpm1},0\n".encode('utf-8'))
-                motor2_stopped = True
+            # Start ramp-down for motor 2 when approaching time2
+            if not motor2_stopped and elapsed >= time2 - ramp_duration:
+                if elapsed >= time2:
+                    motor2_stopped = True
+                else:
+                    # Ramp down motor 2
+                    remaining = time2 - elapsed
+                    factor = remaining / ramp_duration
+                    current_rpm1 = rpm1 if not motor1_stopped else 0
+                    current_rpm2 = rpm2 * factor
+                    self.setRPM(current_rpm1, current_rpm2)
             
             # Get distance readings
             d1, d2 = self.getDist()
             if d1 is not None:
                 final_d1, final_d2 = d1, d2
+            
+            time.sleep(0.05)  # Small delay for smooth updates
         
         # Ensure both motors are stopped
         self.stop()
