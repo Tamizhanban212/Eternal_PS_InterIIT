@@ -147,7 +147,7 @@ if __name__ == "__main__":
     # Using context manager (recommended - automatically closes connection)
     with MotorController() as motors:
         # Set motor speeds
-        motors.setRPM(20, 20)
+        motors.setRPM(-15, -15)
         
         # Monitor distances for 5 seconds
         print("\nMonitoring distances for 5 seconds...")
