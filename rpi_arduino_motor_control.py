@@ -120,9 +120,15 @@ class MotorController:
     
     def stop(self):
         """
-        Stop both motors by setting RPM to 0
+        Stop both motors immediately by setting RPM to 0
         """
-        self.setRPM(0, 0)
+        if self.arduino is None:
+            return
+        
+        # Send stop command directly
+        message = "0,0\n"
+        self.arduino.write(message.encode('utf-8'))
+        time.sleep(0.2)  # Give Arduino time to process
     
     def close(self):
         """
