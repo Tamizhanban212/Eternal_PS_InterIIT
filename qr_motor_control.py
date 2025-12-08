@@ -111,76 +111,72 @@ def find_available_camera(max_index=10):
     print("✗ No working camera found")
     return None
 
-def scan_qr_at_position(cap, timeout=6):
-    """
-    Scan for QR codes for a specified timeout duration.
-    Returns: QR code data if found, None otherwise
-    """
-    print(f"Scanning for QR codes for {timeout} seconds...")
-    start_time = time.time()
-    detected_qr = None
-    
-    # Simple scanning without blocking cv2 window
-    while time.time() - start_time < timeout:
+def qr_scanner_thread(cap, grid, csv_file, running_flag, previous_data):
+    """QR scanner thread - runs continuously like qr_scanner.py"""
+    while running_flag[0]:
         ret, frame = cap.read()
         
         if not ret:
             print("Error: Failed to capture frame")
-            time.sleep(0.1)
-            continue
+            break
         
         # Decode QR codes in the frame
         decoded_objects = decode(frame)
         
+        # Process each detected QR code
         for obj in decoded_objects:
             qr_data = obj.data.decode('utf-8')
+            qr_type = obj.type
             
-            # Store the first detected QR code
-            if detected_qr is None:
-                detected_qr = qr_data
-                print(f"✓ QR Code detected: {qr_data}")
+            # Get the bounding box coordinates
+            points = obj.polygon
+            
+            # If the points do not form a quad, find convex hull
+            if len(points) > 4:
+                hull = cv2.convexHull(np.array([point for point in points], dtype=np.float32))
+                points = hull
+            
+            # Draw the bounding box around the QR code
+            n = len(points)
+            for j in range(n):
+                cv2.line(frame, tuple(points[j]), tuple(points[(j+1) % n]), (0, 255, 0), 3)
+            
+            # Draw a rectangle for the text background
+            x = obj.rect.left
+            y = obj.rect.top
+            w = obj.rect.width
+            h = obj.rect.height
+            
+            # Display the QR code type and data on the frame
+            cv2.rectangle(frame, (x, y - 30), (x + w, y), (0, 255, 0), -1)
+            cv2.putText(frame, f'{qr_type}: {qr_data}', (x, y - 10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+            
+            # Print to console only when new code is detected
+            if qr_data != previous_data[0]:
+                print(f"\n{'='*50}")
+                print(f"QR Code Type: {qr_type}")
+                print(f"Data: {qr_data}")
+                
+                # Parse and update grid
+                parsed = parse_qr_data(qr_data)
+                if parsed:
+                    rack, shelf, item = parsed
+                    grid[(rack, shelf)] = item
+                    print(f"✓ Parsed: Rack {rack}, Shelf {shelf}, Item {item}")
+                    
+                    # Save to CSV after each successful scan
+                    save_grid_to_csv(grid, csv_file)
+                else:
+                    print(f"✗ Invalid format. Expected: R{{rack}}_S{{shelf}}_ITM{{item}}")
+                
+                print(f"{'='*50}")
+                previous_data[0] = qr_data
         
-        # Small delay to prevent CPU overuse
-        time.sleep(0.05)
-    
-    print(f"Scan complete (elapsed: {time.time() - start_time:.1f}s)")
-    return detected_qr
-
-def camera_feed_thread(cap, running_flag):
-    """Display camera feed in separate thread"""
-    cv2.namedWindow('QR Scanner - Live Feed', cv2.WINDOW_NORMAL)
-    
-    while running_flag[0]:
-        ret, frame = cap.read()
-        if ret:
-            # Decode and draw QR codes
-            decoded_objects = decode(frame)
-            
-            for obj in decoded_objects:
-                qr_data = obj.data.decode('utf-8')
-                
-                # Draw bounding box
-                points = obj.polygon
-                if len(points) > 4:
-                    hull = cv2.convexHull(np.array([point for point in points], dtype=np.float32))
-                    points = hull
-                
-                n = len(points)
-                for j in range(n):
-                    cv2.line(frame, tuple(points[j]), tuple(points[(j+1) % n]), (0, 255, 0), 3)
-                
-                # Display QR data
-                x = obj.rect.left
-                y = obj.rect.top
-                w = obj.rect.width
-                
-                cv2.rectangle(frame, (x, y - 30), (x + w, y), (0, 255, 0), -1)
-                cv2.putText(frame, f'{obj.type}: {qr_data}', (x, y - 10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
-            
-            cv2.imshow('QR Scanner - Live Feed', frame)
+        # Display the resulting frame
+        cv2.imshow('QR Code Scanner - Press Q to Quit', frame)
         
-        # Non-blocking waitKey
+        # Break the loop when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
             running_flag[0] = False
             break
@@ -278,15 +274,30 @@ def main():
         cleanup_z_axis()
         return
     
+    # QR scanner state
+    running_flag = [True]
+    previous_data = [None]
+    
+    # Start QR scanner thread (exactly like qr_scanner.py)
+    scanner_thread = threading.Thread(
+        target=qr_scanner_thread, 
+        args=(cap, grid, csv_file, running_flag, previous_data), 
+        daemon=True
+    )
+    scanner_thread.start()
+    
+    print("QR Code Scanner Started")
+    print("Press 'q' in camera window to quit")
+    print("Scanning for format: R{rack}_S{shelf}_ITM{item}")
+    
     try:
         current_position = OFFSET  # Start at home position
         
-        # Start camera feed in separate thread
-        running_flag = [True]  # Use list to make it mutable in thread
-        camera_thread = threading.Thread(target=camera_feed_thread, args=(cap, running_flag), daemon=True)
-        camera_thread.start()
-        
+        # Move through all positions
         for i, target_position in enumerate(positions, 1):
+            if not running_flag[0]:  # Stop if scanner was quit
+                break
+                
             print(f"\n{'='*50}")
             print(f"Stage {i}/{len(positions)}: Moving to {target_position} cm")
             print(f"{'='*50}")
@@ -305,57 +316,33 @@ def main():
                 current_position = target_position
                 print(f"✓ Reached position: {current_position} cm")
             
-            # Wait and scan for QR code
-            print(f"\nScanning for QR code at position {current_position} cm...")
-            qr_data = scan_qr_at_position(cap, timeout=6)
-            
-            if qr_data:
-                parsed = parse_qr_data(qr_data)
-                if parsed:
-                    rack, shelf, item = parsed
-                    grid[(rack, shelf)] = item
-                    print(f"✓ Parsed: Rack {rack}, Shelf {shelf}, Item {item}")
-                    save_grid_to_csv(grid, csv_file)
-                else:
-                    print(f"✗ Invalid QR format: {qr_data}")
-            else:
-                print("✗ No QR code detected at this position")
-        
-        print(f"\n{'='*50}")
-        print("All stages completed!")
-        print(f"Final grid contains {len(grid)} entries")
-        print(f"{'='*50}")
+            # Wait 6 seconds at this position for scanning
+            print(f"\nWaiting 6 seconds at position {current_position} cm for QR scanning...")
+            time.sleep(6)
         
         # Return to home position (offset)
-        print(f"\nCurrent position: {current_position} cm")
-        print(f"Target home position: {OFFSET} cm")
-        
         if current_position != OFFSET:
-            print(f"\nReturning to home position ({OFFSET} cm)...")
+            print(f"\n{'='*50}")
+            print(f"All stages completed! Returning to home position ({OFFSET} cm)...")
+            print(f"{'='*50}")
+            
             distance = abs(OFFSET - current_position)
             direction = 1 if OFFSET > current_position else 0
             direction_text = "UP" if direction == 1 else "DOWN"
             
-            print(f"Distance to move: {distance:.1f} cm")
-            print(f"Direction: {direction_text} (direction={direction})")
-            print(f"Calling z_axis({distance}, {direction})...")
-            
+            print(f"Moving {direction_text} {distance:.1f} cm...")
             z_axis(distance, direction)
-            
             current_position = OFFSET
-            print(f"✓ Movement command sent - Should be at home position: {OFFSET} cm")
+            print(f"✓ Returned to home position: {OFFSET} cm")
         else:
             print(f"\nAlready at home position: {OFFSET} cm")
         
-        # Wait a moment for movement to complete
-        print("\nWaiting for movement to complete...")
-        time.sleep(2)
+        print(f"\nAll movements complete! Final grid contains {len(grid)} entries")
+        print("QR scanner still running. Press 'q' in camera window to quit.")
         
-        # Stop camera thread AFTER returning to home
-        print("\nStopping camera...")
-        running_flag[0] = False
-        time.sleep(0.5)  # Give thread time to close
-        cv2.destroyAllWindows()
+        # Keep running until user quits scanner
+        while running_flag[0]:
+            time.sleep(0.1)
     
     except KeyboardInterrupt:
         print("\n\nOperation interrupted by user")
@@ -365,10 +352,17 @@ def main():
         running_flag[0] = False
     finally:
         # Cleanup
+        running_flag[0] = False
+        time.sleep(0.5)
         cap.release()
         cv2.destroyAllWindows()
         cleanup_z_axis()
-        print("\nCleanup complete")
+        
+        # Final save
+        save_grid_to_csv(grid, csv_file)
+        print("\nQR Code Scanner Stopped")
+        print(f"Final grid contains {len(grid)} entries")
+        print("Cleanup complete")
 
 if __name__ == "__main__":
     main()
