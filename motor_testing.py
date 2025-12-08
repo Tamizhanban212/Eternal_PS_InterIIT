@@ -18,7 +18,7 @@ def main():
             
             # Test setBothMotors
             print("Testing setBothMotors - Different RPM, Different Time:")
-            d1, d2 = motors.setBothMotors(-60, 30, 5, 10)
+            d1, d2 = motors.setBothMotors(-60, 30, 30, 10)
             print(f"Motor1: 70 RPM for 1.5s, Motor2: 30 RPM for 3.5s - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
             
             motors.stop(1)
