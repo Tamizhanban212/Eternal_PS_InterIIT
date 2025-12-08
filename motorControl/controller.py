@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Motor control library for Arduino communication
-Provides simple functions to control motors and get distance measurements
+Motor Controller Class
+Provides interface to control motors and get distance measurements via Arduino
 """
 
 import serial
@@ -18,6 +18,8 @@ class MotorController:
             timeout: Read timeout in seconds
         """
         self.arduino = None
+        self.current_rpm1 = 0
+        self.current_rpm2 = 0
         self.connect(port, baudrate, timeout)
     
     def connect(self, port='/dev/ttyACM0', baudrate=115200, timeout=1):
@@ -38,7 +40,8 @@ class MotorController:
             
             # Read the "Arduino Ready" message
             if self.arduino.in_waiting > 0:
-                print(self.arduino.readline().decode('utf-8').strip())
+                ready_msg = self.arduino.readline().decode('utf-8').strip()
+                print(ready_msg)
             
             # Clear any initial buffer
             time.sleep(0.5)
@@ -71,6 +74,10 @@ class MotorController:
             # Send RPM values as comma-separated string with newline
             message = f"{rpm1},{rpm2}\n"
             self.arduino.write(message.encode('utf-8'))
+            
+            # Update current RPM values
+            self.current_rpm1 = rpm1
+            self.current_rpm2 = rpm2
             
             # Wait for Arduino to acknowledge (it sends back distances)
             time.sleep(0.15)
@@ -118,10 +125,32 @@ class MotorController:
             print(f"Error reading distance: {e}")
             return None, None
     
-    def stop(self):
+    def stop(self, ramp_time=0.5):
         """
-        Stop both motors by setting RPM to 0
+        Stop both motors smoothly using a ramp down over specified time
+        
+        Args:
+            ramp_time: Time in seconds to ramp down to zero (default 0.5s)
         """
+        if self.arduino is None:
+            return
+        
+        # Number of steps for smooth ramp
+        steps = 10
+        step_delay = ramp_time / steps
+        
+        # Calculate RPM decrements per step
+        rpm1_step = self.current_rpm1 / steps
+        rpm2_step = self.current_rpm2 / steps
+        
+        # Gradually reduce RPM to zero
+        for i in range(steps, 0, -1):
+            target_rpm1 = rpm1_step * i
+            target_rpm2 = rpm2_step * i
+            self.setRPM(target_rpm1, target_rpm2)
+            time.sleep(step_delay)
+        
+        # Final stop at exactly 0
         self.setRPM(0, 0)
     
     def close(self):
@@ -140,22 +169,3 @@ class MotorController:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit"""
         self.close()
-
-
-# Example usage
-if __name__ == "__main__":
-    # Using context manager (recommended - automatically closes connection)
-    with MotorController() as motors:
-        # Set motor speeds
-        motors.setRPM(-15, -15)
-        
-        # Monitor distances for 5 seconds
-        print("\nMonitoring distances for 5 seconds...")
-        start_time = time.time()
-        while time.time() - start_time < 5:
-            dist1, dist2 = motors.getDist()
-            if dist1 is not None and dist2 is not None:
-                print(f"Distance 1: {dist1:.2f} cm, Distance 2: {dist2:.2f} cm")
-            time.sleep(0.1)
-        motors.stop()
-        # Motors will automatically stop when exiting the context
