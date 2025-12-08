@@ -80,7 +80,6 @@ class MotorController:
             self.current_rpm2 = rpm2
             
             # Wait for Arduino to acknowledge (it sends back distances)
-            time.sleep(0.15)
             if self.arduino.in_waiting > 0:
                 # Clear the response
                 self.arduino.readline()
