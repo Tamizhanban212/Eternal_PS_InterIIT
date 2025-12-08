@@ -1,3 +1,4 @@
 ls -la /dev | grep ttyACM*
 sudo usermod -a -G dialout tamizhanbanag
 sudo chmod a+rw /dev/ttyACM*
+sudo systemctl enable --now pigpiod

@@ -10,12 +10,16 @@ dependencies:
   - pip:
     - pyzbar
     - pigpio
+    - pyserial
 
 # Notes:
-# - This is a minimal template inferred from the project files.
+# - This environment includes all dependencies for motor control and QR scanning
 # - For Debian/Ubuntu you may need system packages (installed outside conda):
 #     sudo apt install -y libzbar0 pigpio
 #   and start the pigpio daemon:
 #     sudo systemctl enable --now pigpiod
 # - To capture an exact environment from an existing env run:
 #     conda env export --name eternal --no-builds > environment.yml
+# - To recreate this environment on a new machine:
+#     conda env create -f environment.yml
+#     conda activate eternal
