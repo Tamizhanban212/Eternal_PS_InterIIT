@@ -1,99 +1,18 @@
+from z_module import init_z_axis, z_axis, cleanup_z_axis
 import time
-import threading
 
-# Z-axis speed calibration
-Z_SPEED_AT_100_PERCENT = 12.0  # cm/sec at 100% duty cycle
+# Initialize
+init_z_axis()
 
-class ZAxisController:
-    """
-    Z-axis motor movement controller.
-    Moves motor by distance based on speed calibration.
-    """
-    def __init__(self, motor):
-        """
-        Args:
-            motor: Motor instance (from rpi_arduino.py)
-        """
-        self.motor = motor
-        self.moving = False
-        self.move_thread = None
-        self.current_position = 0.0  # Track Z position in cm
-
-    def move_distance(self, distance_cm, direction, speed_percent=100):
-        """
-        Move Z-axis motor by specified distance.
-        
-        Args:
-            distance_cm: Distance to travel in cm (positive value)
-            direction: 1 for up, -1 for down
-            speed_percent: Motor speed as % (0-100), default 100%
-        
-        Returns:
-            None (runs in background thread)
-        """
-        if self.moving:
-            print("Already moving, please wait...")
-            return
-
-        distance_cm = abs(float(distance_cm))
-        if distance_cm <= 0:
-            print("Distance must be > 0 cm")
-            return
-
-        # Calculate time needed: time = distance / speed
-        speed_cm_per_sec = (speed_percent / 100.0) * Z_SPEED_AT_100_PERCENT
-        move_time = distance_cm / speed_cm_per_sec
-
-        print(f"Moving {distance_cm:.2f} cm at {speed_percent}% "
-              f"({'UP' if direction == 1 else 'DOWN'}) "
-              f"for {move_time:.2f} seconds...")
-
-        self.moving = True
-        self.move_thread = threading.Thread(
-            target=self._execute_move,
-            args=(move_time, direction, speed_percent, distance_cm),
-            daemon=True
-        )
-        self.move_thread.start()
-
-    def _execute_move(self, duration, direction, speed_percent, distance_cm):
-        """Internal: execute the timed movement."""
-        try:
-            # Start motor at target speed
-            self.motor.ramp_to_speed(speed_percent, direction)
-            # Wait for duration
-            time.sleep(duration)
-            # Stop immediately to prevent overshoot
-            self.motor.stop_immediate()
-            # Update position
-            self.current_position += distance_cm * direction
-            print(f"Move complete. Current position: {self.current_position:.2f} cm")
-        except Exception as ex:
-            print(f"Move error: {ex}")
-        finally:
-            self.moving = False
-
-    def move_to_level(self, level, total_height_cm=60):
-        """
-        Move to one of 5 preset levels (1-5) evenly spaced.
-        Level 1 = bottom, Level 5 = top.
-        
-        Args:
-            level: Target level (1, 2, 3, 4, or 5)
-            total_height_cm: Total Z travel range in cm (default 60)
-        """
-        if level < 1 or level > 5:
-            print("Level must be 1-5")
-            return
-
-        # Calculate position for each level (0-based from bottom)
-        level_height = total_height_cm / 4.0  # 4 intervals for 5 levels
-        target_position = level_height * (level - 1)
-
-        print(f"Moving to Level {level} (target: {target_position:.2f} cm, current: {self.current_position:.2f} cm)")
-        
-        # Calculate distance and direction from current position
-        distance = abs(target_position - self.current_position)
-        direction = 1 if target_position > self.current_position else -1
-        
-        self.move_distance(distance, direction=direction, speed_percent=100)
+try:
+    # Move UP 20 cm
+    z_axis(20, 1)
+    time.sleep(3)  # Wait for movement to complete
+    
+    # Move DOWN 10 cm
+    z_axis(10, 0)
+    time.sleep(2)  # Wait for movement to complete
+    
+finally:
+    # Always cleanup
+    cleanup_z_axis()
