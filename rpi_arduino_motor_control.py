@@ -147,12 +147,16 @@ if __name__ == "__main__":
     # Using context manager (recommended - automatically closes connection)
     with MotorController() as motors:
         # Set motor speeds
+        print("Setting motors to -15 RPM for 5 seconds...")
         motors.setRPM(-15, -15)
         time.sleep(5)
+        print("Stopping motors...")
         motors.stop()
         time.sleep(2)
+        print("Setting motors to 10 RPM for 5 seconds...")
         motors.setRPM(10, 10)
         time.sleep(5)
+        print("Stopping motors...")
         motors.stop()
         time.sleep(2)
         # Motors will automatically stop when exiting the context
