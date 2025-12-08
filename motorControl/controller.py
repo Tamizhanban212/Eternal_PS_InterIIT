@@ -125,43 +125,14 @@ class MotorController:
             print(f"Error reading distance: {e}")
             return None, None
     
-    def stop(self, ramp_time=0.5):
+    def stop(self):
         """
-        Stop both motors smoothly using a ramp down over specified time
-        
-        Args:
-            ramp_time: Time in seconds to ramp down to zero (default 0.5s)
+        Stop both motors immediately by setting RPM to 0
         """
         if self.arduino is None:
             return
         
-        # Get absolute values for ramping
-        abs_rpm1 = abs(self.current_rpm1)
-        abs_rpm2 = abs(self.current_rpm2)
-        
-        # Number of steps for smooth ramp
-        steps = 10
-        step_delay = ramp_time / steps
-        
-        # Calculate RPM decrements per step
-        rpm1_step = abs_rpm1 / steps
-        rpm2_step = abs_rpm2 / steps
-        
-        # Determine direction signs
-        sign1 = 1 if self.current_rpm1 >= 0 else -1
-        sign2 = 1 if self.current_rpm2 >= 0 else -1
-        
-        # Gradually reduce RPM to zero
-        for i in range(steps, 0, -1):
-            target_rpm1 = sign1 * rpm1_step * i
-            target_rpm2 = sign2 * rpm2_step * i
-            
-            # Send RPM values directly without using setRPM to avoid overhead
-            message = f"{target_rpm1},{target_rpm2}\n"
-            self.arduino.write(message.encode('utf-8'))
-            time.sleep(step_delay)
-        
-        # Final stop at exactly 0
+        # Send stop command
         message = "0,0\n"
         self.arduino.write(message.encode('utf-8'))
         self.current_rpm1 = 0
