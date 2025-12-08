@@ -17,6 +17,7 @@ class ZAxisController:
         self.motor = motor
         self.moving = False
         self.move_thread = None
+        self.current_position = 0.0  # Track Z position in cm
 
     def move_distance(self, distance_cm, direction, speed_percent=100):
         """
@@ -50,12 +51,12 @@ class ZAxisController:
         self.moving = True
         self.move_thread = threading.Thread(
             target=self._execute_move,
-            args=(move_time, direction, speed_percent),
+            args=(move_time, direction, speed_percent, distance_cm),
             daemon=True
         )
         self.move_thread.start()
 
-    def _execute_move(self, duration, direction, speed_percent):
+    def _execute_move(self, duration, direction, speed_percent, distance_cm):
         """Internal: execute the timed movement."""
         try:
             # Start motor at target speed
@@ -64,7 +65,9 @@ class ZAxisController:
             time.sleep(duration)
             # Stop smoothly
             self.motor.stop_smooth()
-            print("Move complete.")
+            # Update position
+            self.current_position += distance_cm * direction
+            print(f"Move complete. Current position: {self.current_position:.2f} cm")
         except Exception as ex:
             print(f"Move error: {ex}")
         finally:
@@ -87,7 +90,10 @@ class ZAxisController:
         level_height = total_height_cm / 4.0  # 4 intervals for 5 levels
         target_position = level_height * (level - 1)
 
-        print(f"Moving to Level {level} (position: {target_position:.2f} cm from bottom)")
-        # Note: This assumes motor starts at bottom. 
-        # For production, track current position or add limit switches.
-        self.move_distance(target_position, direction=1, speed_percent=100)
+        print(f"Moving to Level {level} (target: {target_position:.2f} cm, current: {self.current_position:.2f} cm)")
+        
+        # Calculate distance and direction from current position
+        distance = abs(target_position - self.current_position)
+        direction = 1 if target_position > self.current_position else -1
+        
+        self.move_distance(distance, direction=direction, speed_percent=100)
