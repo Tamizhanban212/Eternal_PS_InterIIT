@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Z-axis motor controller with manual distance control.
+Combined Motor, Controller, and API functions in one file.
 """
 import threading
 import time
@@ -35,7 +36,6 @@ except Exception:
 Z_PWM_PIN = 13
 Z_DIR_PIN = 19
 PWM_FREQ = 1000  # Hz
-
 Z_SPEED = 100  # percent duty cycle
 
 # Ramping parameters
@@ -43,12 +43,16 @@ RAMP_TIME = 0.5
 RAMP_STEPS = 50
 STEP_DELAY = RAMP_TIME / RAMP_STEPS
 
+# Z-axis speed calibration
+Z_SPEED_AT_100_PERCENT = 12.0  # cm/sec at 100% duty cycle
+
 # Global motor and controller instances
 _z_motor = None
 _z_controller = None
 
 
 class Motor:
+    """Motor control class for Z-axis"""
     def __init__(self, pwm_pin, dir_pin):
         self.pwm_pin = pwm_pin
         self.dir_pin = dir_pin
@@ -116,10 +120,53 @@ class Motor:
             pass
 
 
-# Import controller
-from z_controller import ZAxisController
+class ZAxisController:
+    """Z-axis motor movement controller"""
+    def __init__(self, motor):
+        self.motor = motor
+        self.moving = False
+        self.move_thread = None
+        self.current_position = 0.0
+
+    def move_distance(self, distance_cm, direction, speed_percent=100):
+        if self.moving:
+            print("Already moving, please wait...")
+            return
+
+        distance_cm = abs(float(distance_cm))
+        if distance_cm <= 0:
+            print("Distance must be > 0 cm")
+            return
+
+        speed_cm_per_sec = (speed_percent / 100.0) * Z_SPEED_AT_100_PERCENT
+        move_time = distance_cm / speed_cm_per_sec
+
+        print(f"Moving {distance_cm:.2f} cm at {speed_percent}% "
+              f"({'UP' if direction == 1 else 'DOWN'}) "
+              f"for {move_time:.2f} seconds...")
+
+        self.moving = True
+        self.move_thread = threading.Thread(
+            target=self._execute_move,
+            args=(move_time, direction, speed_percent, distance_cm),
+            daemon=True
+        )
+        self.move_thread.start()
+
+    def _execute_move(self, duration, direction, speed_percent, distance_cm):
+        try:
+            self.motor.ramp_to_speed(speed_percent, direction)
+            time.sleep(duration)
+            self.motor.stop_immediate()
+            self.current_position += distance_cm * direction
+            print(f"Move complete. Current position: {self.current_position:.2f} cm")
+        except Exception as ex:
+            print(f"Move error: {ex}")
+        finally:
+            self.moving = False
 
 
+# API Functions
 def init_z_axis():
     """Initialize Z-axis motor and controller. Call this once at startup."""
     global _z_motor, _z_controller
@@ -165,6 +212,7 @@ def cleanup_z_axis():
 
 
 def main():
+    """Interactive menu for manual control"""
     init_z_axis()
 
     print("=" * 50)
