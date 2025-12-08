@@ -38,8 +38,8 @@ float eprev2 = 0;
 float distanceCm2 = 0;  // Distance traveled in cm
 
 // Target settings (configurable outside loop)
-float targetRpm1 = -10;
-float targetRpm2 = -10;
+float targetRpm1 = 0;
+float targetRpm2 = 0;
 int targetDir1 = 1;  // 1=forward, 0=backward
 int targetDir2 = 1;  // 1=forward, 0=backward
 
@@ -86,9 +86,46 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(ENCA1), onEncoderA1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCA2), onEncoderA2, CHANGE);
+  
+  Serial.println("Arduino Ready");
+}
+
+void checkSerialCommands() {
+  // Check if data is available from Raspberry Pi
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+    
+    // Parse the two RPM values separated by comma
+    int commaIndex = input.indexOf(',');
+    if (commaIndex > 0) {
+      float rpm1 = input.substring(0, commaIndex).toFloat();
+      float rpm2 = input.substring(commaIndex + 1).toFloat();
+      
+      // Reset PID integral terms when stopping or changing direction
+      if ((rpm1 == 0 && targetRpm1 != 0) || (rpm1 * targetRpm1 < 0)) {
+        eintegral1 = 0;
+      }
+      if ((rpm2 == 0 && targetRpm2 != 0) || (rpm2 * targetRpm2 < 0)) {
+        eintegral2 = 0;
+      }
+      
+      // Update target RPM values
+      targetRpm1 = rpm1;
+      targetRpm2 = -rpm2;  // Invert the sign of motor 2's target RPM
+      
+      // Send back the current distances
+      Serial.print(distanceCm1, 2);
+      Serial.print(",");
+      Serial.println(distanceCm2, 2);
+    }
+  }
 }
 
 void loop() {
+  // Check for incoming serial commands from Raspberry Pi
+  checkSerialCommands();
+  
   // PID constants (same for both motors)
   float kp = 0.5;
   float ki = 2.0;
