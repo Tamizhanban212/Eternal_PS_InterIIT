@@ -43,6 +43,10 @@ RAMP_TIME = 0.5
 RAMP_STEPS = 50
 STEP_DELAY = RAMP_TIME / RAMP_STEPS
 
+# Global motor and controller instances
+_z_motor = None
+_z_controller = None
+
 
 class Motor:
     def __init__(self, pwm_pin, dir_pin):
@@ -116,12 +120,52 @@ class Motor:
 from z_controller import ZAxisController
 
 
-def main():
+def init_z_axis():
+    """Initialize Z-axis motor and controller. Call this once at startup."""
+    global _z_motor, _z_controller
+    
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
+    
+    _z_motor = Motor(Z_PWM_PIN, Z_DIR_PIN)
+    _z_controller = ZAxisController(_z_motor)
+    print("Z-axis initialized")
 
-    z_motor = Motor(Z_PWM_PIN, Z_DIR_PIN)
-    z_controller = ZAxisController(z_motor)
+
+def z_axis(distance, direction):
+    """
+    Move Z-axis motor.
+    
+    Args:
+        distance: Distance to move in cm (positive value)
+        direction: 1 for UP, 0 for DOWN
+    
+    Example:
+        z_axis(20, 1)   # Move 20 cm UP
+        z_axis(10, 0)   # Move 10 cm DOWN
+    """
+    global _z_motor, _z_controller
+    
+    if _z_motor is None or _z_controller is None:
+        print("Error: Z-axis not initialized. Call init_z_axis() first.")
+        return
+    
+    # Convert direction: 0 -> -1 (down), 1 -> 1 (up)
+    dir_value = 1 if direction == 1 else -1
+    _z_controller.move_distance(distance, direction=dir_value, speed_percent=100)
+
+
+def cleanup_z_axis():
+    """Cleanup Z-axis resources. Call this at shutdown."""
+    global _z_motor
+    if _z_motor:
+        _z_motor.cleanup()
+        GPIO.cleanup()
+        print("Z-axis cleanup complete")
+
+
+def main():
+    init_z_axis()
 
     print("=" * 50)
     print("Z-Axis Motor Controller")
@@ -140,19 +184,20 @@ def main():
             if choice == "1":
                 try:
                     distance = float(input("Enter distance (cm): "))
-                    z_controller.move_distance(distance, direction=1, speed_percent=100)
+                    z_axis(distance, 1)
                 except ValueError:
                     print("Invalid distance value")
             
             elif choice == "2":
                 try:
                     distance = float(input("Enter distance (cm): "))
-                    z_controller.move_distance(distance, direction=-1, speed_percent=100)
+                    z_axis(distance, 0)
                 except ValueError:
                     print("Invalid distance value")
             
             elif choice == "3":
-                z_motor.stop_immediate()
+                if _z_motor:
+                    _z_motor.stop_immediate()
                 print("Emergency stop activated")
             
             elif choice == "4":
@@ -166,9 +211,7 @@ def main():
         print("\nInterrupted by user")
     
     finally:
-        z_motor.cleanup()
-        GPIO.cleanup()
-        print("Cleanup complete")
+        cleanup_z_axis()
 
 
 if __name__ == "__main__":
@@ -177,6 +220,6 @@ if __name__ == "__main__":
     except Exception as ex:
         print(f"Error: {ex}")
         try:
-            GPIO.cleanup()
+            cleanup_z_axis()
         except Exception:
             pass
