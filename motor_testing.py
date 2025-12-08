@@ -41,7 +41,7 @@ def main():
         
         # Right turn - motor1 at 30 RPM, motor2 at -30 RPM (differential drive)
         print("Turning RIGHT at 30 RPM for 3 seconds...")
-        d1, d2 = motor.setBothMotors(30, -30, 3, 3)
+        d1, d2 = motor.setBothMotors(15, -15, 3, 3)
         print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
         
         # Stop for 2 seconds
@@ -50,7 +50,7 @@ def main():
         
         # Left turn - motor1 at -30 RPM, motor2 at 30 RPM (differential drive)
         print("Turning LEFT at 30 RPM for 3 seconds...")
-        d1, d2 = motor.setBothMotors(-30, 30, 3, 3)
+        d1, d2 = motor.setBothMotors(-15, 15, 3, 3)
         print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
         
         # Final stop
