@@ -316,6 +316,9 @@ def main():
             print(f"✓ Returned to home position: {OFFSET} cm")
         else:
             print(f"\nAlready at home position: {OFFSET} cm")
+        
+        # Close camera window after returning to home
+        cv2.destroyAllWindows()
     
     except KeyboardInterrupt:
         print("\n\nOperation interrupted by user")
