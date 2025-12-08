@@ -32,10 +32,12 @@ def main():
             
             print()
             
-            # # Stop motors
-            # print("Stopping motors...")
-            # motors.stop()
-        
+            # Stop motors
+            print("Stopping motors...")
+            motors.stop()
+            motors.setRPM(25, 25)
+            time.sleep(5)
+            
         print("="*60)
         print("TEST COMPLETED")
         print("="*60 + "\n")
