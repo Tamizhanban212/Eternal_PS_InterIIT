@@ -1,80 +1,72 @@
 #!/usr/bin/env python3
 """
 Motor Testing Script
-Demonstrates usage of the motorControl module with automatic smooth acceleration/deceleration
+Tests motor movements: forward, reverse, right, left with 2-second stops between each
 """
 
+import sys
 import time
-from motorControl import MotorController
+from motorControl.controller import MotorController
 
 def main():
-    """Run motor tests - forward, right, backward, left with smooth motion"""
-    print("\n" + "="*60)
-    print("MOTOR CONTROL TEST (AUTO SMOOTH + MIN RPM HANDLING)")
-    print("="*60 + "\n")
+    # Initialize motor controller
+    print("Initializing motor controller...")
+    motor = MotorController(port='/dev/ttyACM0', baudrate=115200)
+    
+    if motor.arduino is None:
+        print("Failed to connect to Arduino. Exiting.")
+        return
+    
+    print("Motor controller initialized successfully!")
+    print("\nStarting motor test sequence...\n")
     
     try:
-        # Initialize with custom parameters
-        # ramp_time: 0.5 seconds for acceleration/deceleration
-        # ramp_steps: 15 steps for smooth transition
-        # min_rpm: 90 RPM minimum threshold (motors won't rotate below this)
-        with MotorController(ramp_time=0.5, ramp_steps=15, min_rpm=90) as motors:
-            
-            # Forward for 5 seconds at 90 RPM (smoothing always enabled)
-            print("Moving FORWARD at 90 RPM for 5 seconds...")
-            d1, d2 = motors.setBothMotors(90, 90, 5, 5)
-            if d1 is not None and d2 is not None:
-                print(f"Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
-            else:
-                print("Distance data not available\n")
-            
-            # Stop for 2 seconds (smooth deceleration always enabled)
-            print("Stopping for 2 seconds...")
-            motors.stop()
-            time.sleep(2)
-            
-            # Backward for 5 seconds at 90 RPM
-            print("Moving BACKWARD at 90 RPM for 5 seconds...")
-            d1, d2 = motors.setBothMotors(-90, -90, 5, 5)
-            if d1 is not None and d2 is not None:
-                print(f"Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
-            else:
-                print("Distance data not available\n")
-            
-            # Stop for 2 seconds
-            print("Stopping for 2 seconds...")
-            motors.stop()
-            time.sleep(2)
-            
-            # Right turn - if you request below min RPM, it auto-adjusts to 90
-            print("Turning RIGHT (motors auto-adjust to min 90 RPM)...")
-            d1, d2 = motors.setBothMotors(-30, 30, 5, 5)  # Will become -90, 90
-            if d1 is not None and d2 is not None:
-                print(f"Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
-            else:
-                print("Distance data not available\n")
-            
-            # Stop for 2 seconds
-            print("Stopping for 2 seconds...")
-            motors.stop()
-            time.sleep(2)
-            
-            # Left turn
-            print("Turning LEFT (motors auto-adjust to min 90 RPM)...")
-            d1, d2 = motors.setBothMotors(30, -30, 5, 5)  # Will become 90, -90
-            if d1 is not None and d2 is not None:
-                print(f"Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
-            else:
-                print("Distance data not available\n")
-            
-            print("="*60)
-            print("ALL TESTS COMPLETED")
-            print("="*60 + "\n")
+        # Forward movement - both motors at 90 RPM
+        print("Moving FORWARD at 90 RPM for 3 seconds...")
+        d1, d2 = motor.setBothMotors(90, 90, 3, 3)
+        print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
+        
+        # Stop for 2 seconds
+        print("STOPPING for 2 seconds...")
+        motor.stop(duration=2)
+        
+        # Reverse movement - both motors at -90 RPM
+        print("Moving REVERSE at -90 RPM for 3 seconds...")
+        d1, d2 = motor.setBothMotors(-90, -90, 3, 3)
+        print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
+        
+        # Stop for 2 seconds
+        print("STOPPING for 2 seconds...")
+        motor.stop(duration=2)
+        
+        # Right turn - motor1 at 30 RPM, motor2 at -30 RPM (differential drive)
+        print("Turning RIGHT at 30 RPM for 3 seconds...")
+        d1, d2 = motor.setBothMotors(30, -30, 3, 3)
+        print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
+        
+        # Stop for 2 seconds
+        print("STOPPING for 2 seconds...")
+        motor.stop(duration=2)
+        
+        # Left turn - motor1 at -30 RPM, motor2 at 30 RPM (differential drive)
+        print("Turning LEFT at 30 RPM for 3 seconds...")
+        d1, d2 = motor.setBothMotors(-30, 30, 3, 3)
+        print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
+        
+        # Final stop
+        print("STOPPING - Test sequence complete!")
+        motor.stop()
+        
+        print("\nMotor test sequence completed successfully!")
         
     except KeyboardInterrupt:
         print("\n\nTest interrupted by user")
+        motor.stop()
     except Exception as e:
-        print(f"\nError during testing: {e}")
+        print(f"\nError during test: {e}")
+        motor.stop()
+    finally:
+        motor.close()
 
 if __name__ == "__main__":
     main()
