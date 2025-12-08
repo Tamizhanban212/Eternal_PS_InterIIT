@@ -7,13 +7,13 @@ Sends two values to Arduino and receives the result
 import serial
 import time
 
-def connect_arduino(port='/dev/ttyACM0', baudrate=9600, timeout=1):
+def connect_arduino(port='/dev/ttyACM0', baudrate=115200, timeout=1):
     """
     Establish connection with Arduino
     
     Args:
         port: Serial port (usually /dev/ttyACM0 or /dev/ttyUSB0)
-        baudrate: Communication speed (must match Arduino)
+        baudrate: Communication speed (must match Arduino - 115200)
         timeout: Read timeout in seconds
     
     Returns:
@@ -34,47 +34,54 @@ def connect_arduino(port='/dev/ttyACM0', baudrate=9600, timeout=1):
         print("Common ports: /dev/ttyACM0, /dev/ttyACM1, /dev/ttyUSB0")
         return None
 
-def send_values(ser, value1, value2):
+def send_rpm_get_distance(ser, targetRpm1, targetRpm2):
     """
-    Send two values to Arduino and receive result
+    Send target RPM values to Arduino and receive distance measurements
     
     Args:
         ser: Serial connection object
-        value1: First integer value
-        value2: Second integer value
+        targetRpm1: Target RPM for motor 1 (float)
+        targetRpm2: Target RPM for motor 2 (float)
     
     Returns:
-        int: Result from Arduino, or None if error
+        tuple: (distanceCm1, distanceCm2) or (None, None) if error
     """
     if ser is None:
         print("No serial connection available")
-        return None
+        return None, None
     
     try:
-        # Send values as comma-separated string with newline
-        message = f"{value1},{value2}\n"
+        # Send RPM values as comma-separated string with newline
+        message = f"{targetRpm1},{targetRpm2}\n"
         ser.write(message.encode('utf-8'))
-        print(f"Sent to Arduino: {value1}, {value2}")
+        print(f"Sent to Arduino - RPM1: {targetRpm1}, RPM2: {targetRpm2}")
         
         # Wait for response
-        time.sleep(0.1)  # Small delay for Arduino to process
+        time.sleep(0.15)  # Small delay for Arduino to process
         
         if ser.in_waiting > 0:
             response = ser.readline().decode('utf-8').strip()
-            result = int(response)
-            print(f"Received from Arduino: {result}")
-            return result
+            # Parse the response (distanceCm1,distanceCm2)
+            distances = response.split(',')
+            if len(distances) == 2:
+                distanceCm1 = float(distances[0])
+                distanceCm2 = float(distances[1])
+                print(f"Received from Arduino - Distance1: {distanceCm1:.2f} cm, Distance2: {distanceCm2:.2f} cm")
+                return distanceCm1, distanceCm2
+            else:
+                print(f"Unexpected response format: {response}")
+                return None, None
         else:
             print("No response from Arduino")
-            return None
+            return None, None
             
     except Exception as e:
         print(f"Error during communication: {e}")
-        return None
+        return None, None
 
 def main():
-    """Main function to demonstrate Arduino communication"""
-    print("=== Raspberry Pi - Arduino USB Communication ===\n")
+    """Main function to demonstrate Arduino motor control communication"""
+    print("=== Raspberry Pi - Arduino Motor Control Communication ===\n")
     
     # Connect to Arduino
     arduino = connect_arduino()
@@ -83,16 +90,16 @@ def main():
         return
     
     try:
-        # Example: Send 2 and 3 to Arduino
-        print("\n--- Test 1 ---")
-        result = send_values(arduino, 2, 3)
+        # Clear any initial serial buffer
+        time.sleep(1)
+        arduino.flushInput()
         
-        # Additional tests
-        print("\n--- Test 2 ---")
-        send_values(arduino, 10, 25)
+        # Get RPM values from user
+        rpm1 = float(input("Enter target RPM for Motor 1: "))
+        rpm2 = float(input("Enter target RPM for Motor 2: "))
         
-        print("\n--- Test 3 ---")
-        send_values(arduino, -5, 15)
+        # Send RPM values and get distances
+        dist1, dist2 = send_rpm_get_distance(arduino, rpm1, rpm2)
         
     finally:
         # Clean up
