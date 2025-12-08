@@ -106,7 +106,6 @@ class MotorController:
     def setBothMotors(self, rpm1, rpm2, time1, time2):
         """
         Set different RPMs and durations for each motor independently
-        Uses S-curve velocity profile for smooth acceleration/deceleration
         
         Args:
             rpm1: Target RPM for motor 1
@@ -117,105 +116,35 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        import math
+        # Set both motors to their respective RPMs
+        self.setRPM(rpm1, rpm2)
         
-        def s_curve(t, duration, target_value):
-            """
-            S-curve profile using smoothstep function
-            Returns value from 0 to target_value over duration
-            """
-            if t <= 0:
-                return 0
-            elif t >= duration:
-                return target_value
-            else:
-                # Normalized time (0 to 1)
-                x = t / duration
-                # Smoothstep function: 3x^2 - 2x^3
-                factor = 3 * x * x - 2 * x * x * x
-                return target_value * factor
-        
-        s_duration = 0.5  # S-curve duration for acceleration and deceleration
+        # Run for the maximum duration to capture both motors
         max_time = max(time1, time2)
         start = time.time()
         final_d1, final_d2 = None, None
         
-        # Track motor states
-        motor1_phase = 'accel'  # 'accel', 'constant', 'decel', 'stopped'
-        motor2_phase = 'accel'
-        motor1_decel_start = time1 - s_duration
-        motor2_decel_start = time2 - s_duration
+        # Track when each motor should stop
+        motor1_stopped = False
+        motor2_stopped = False
         
         while time.time() - start < max_time:
             elapsed = time.time() - start
             
-            # Calculate RPM for motor 1 based on S-curve
-            if motor1_phase == 'accel':
-                if elapsed < s_duration:
-                    current_rpm1 = s_curve(elapsed, s_duration, rpm1)
-                else:
-                    motor1_phase = 'constant'
-                    current_rpm1 = rpm1
-            elif motor1_phase == 'constant':
-                if elapsed >= motor1_decel_start:
-                    motor1_phase = 'decel'
-                    motor1_decel_time_start = elapsed
-                    current_rpm1 = rpm1
-                else:
-                    current_rpm1 = rpm1
-            elif motor1_phase == 'decel':
-                decel_elapsed = elapsed - motor1_decel_time_start
-                if decel_elapsed >= s_duration or elapsed >= time1:
-                    motor1_phase = 'stopped'
-                    current_rpm1 = 0
-                else:
-                    # Decelerate from rpm1 to 0
-                    remaining_factor = 1 - (decel_elapsed / s_duration)
-                    # Apply S-curve to deceleration
-                    x = decel_elapsed / s_duration
-                    factor = 3 * x * x - 2 * x * x * x
-                    current_rpm1 = rpm1 * (1 - factor)
-            else:  # stopped
-                current_rpm1 = 0
+            # Stop motor 1 when its time is up
+            if not motor1_stopped and elapsed >= time1:
+                self.arduino.write(f"0,{rpm2}\n".encode('utf-8'))
+                motor1_stopped = True
             
-            # Calculate RPM for motor 2 based on S-curve
-            if motor2_phase == 'accel':
-                if elapsed < s_duration:
-                    current_rpm2 = s_curve(elapsed, s_duration, rpm2)
-                else:
-                    motor2_phase = 'constant'
-                    current_rpm2 = rpm2
-            elif motor2_phase == 'constant':
-                if elapsed >= motor2_decel_start:
-                    motor2_phase = 'decel'
-                    motor2_decel_time_start = elapsed
-                    current_rpm2 = rpm2
-                else:
-                    current_rpm2 = rpm2
-            elif motor2_phase == 'decel':
-                decel_elapsed = elapsed - motor2_decel_time_start
-                if decel_elapsed >= s_duration or elapsed >= time2:
-                    motor2_phase = 'stopped'
-                    current_rpm2 = 0
-                else:
-                    # Decelerate from rpm2 to 0
-                    remaining_factor = 1 - (decel_elapsed / s_duration)
-                    # Apply S-curve to deceleration
-                    x = decel_elapsed / s_duration
-                    factor = 3 * x * x - 2 * x * x * x
-                    current_rpm2 = rpm2 * (1 - factor)
-            else:  # stopped
-                current_rpm2 = 0
-            
-            # Set motor RPMs
-            self.setRPM(current_rpm1, current_rpm2)
+            # Stop motor 2 when its time is up
+            if not motor2_stopped and elapsed >= time2:
+                self.arduino.write(f"{rpm1},0\n".encode('utf-8'))
+                motor2_stopped = True
             
             # Get distance readings
             d1, d2 = self.getDist()
             if d1 is not None:
                 final_d1, final_d2 = d1, d2
-            
-            time.sleep(0.02)  # 20ms update rate for smooth S-curve
         
         # Ensure both motors are stopped
         self.stop()
