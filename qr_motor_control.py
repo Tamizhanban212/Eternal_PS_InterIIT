@@ -110,7 +110,7 @@ def find_available_camera(max_index=10):
     print("✗ No working camera found")
     return None
 
-def scan_qr_at_position(cap, timeout=3):
+def scan_qr_at_position(cap, timeout=6):
     """
     Scan for QR codes for a specified timeout duration.
     Returns: QR code data if found, None otherwise
@@ -124,6 +124,7 @@ def scan_qr_at_position(cap, timeout=3):
         
         if not ret:
             print("Error: Failed to capture frame")
+            time.sleep(0.1)
             continue
         
         # Decode QR codes in the frame
@@ -159,9 +160,13 @@ def scan_qr_at_position(cap, timeout=3):
         # Show frame
         cv2.imshow('QR Scanner - Scanning...', frame)
         
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Non-blocking waitKey
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            print("Scan interrupted by user")
             break
     
+    print(f"Scan complete (elapsed: {time.time() - start_time:.1f}s)")
     return detected_qr
 
 def get_stage_positions():
