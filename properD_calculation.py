@@ -39,7 +39,6 @@ def forward(rpm, duration):
     Move forward at specified RPM for given duration
     Returns: (distance1, distance2) in cm
     """
-    print(f"Moving forward at {rpm} RPM for {duration}s...")
     setRPM(rpm, rpm)
     
     start = time.time()
@@ -49,7 +48,6 @@ def forward(rpm, duration):
         d1, d2 = getDist()
         if d1 is not None:
             final_d1, final_d2 = d1, d2
-            print(f"  D1: {d1:.2f} cm, D2: {d2:.2f} cm")
     
     return final_d1, final_d2
 
@@ -58,7 +56,6 @@ def backward(rpm, duration):
     Move backward at specified RPM for given duration
     Returns: (distance1, distance2) in cm
     """
-    print(f"Moving backward at {rpm} RPM for {duration}s...")
     setRPM(-rpm, -rpm)
     
     start = time.time()
@@ -68,60 +65,78 @@ def backward(rpm, duration):
         d1, d2 = getDist()
         if d1 is not None:
             final_d1, final_d2 = d1, d2
-            print(f"  D1: {d1:.2f} cm, D2: {d2:.2f} cm")
     
     return final_d1, final_d2
 
 def right(rpm, duration):
     """
     Turn right - Motor1 forward, Motor2 backward
+    Returns: (distance1, distance2) in cm
     """
-    print(f"Turning right at {rpm} RPM for {duration}s...")
     setRPM(rpm, -rpm)
-    time.sleep(duration)
+    
+    start = time.time()
+    final_d1, final_d2 = None, None
+    
+    while time.time() - start < duration:
+        d1, d2 = getDist()
+        if d1 is not None:
+            final_d1, final_d2 = d1, d2
+    
+    return final_d1, final_d2
 
 def left(rpm, duration):
     """
     Turn left - Motor1 backward, Motor2 forward
+    Returns: (distance1, distance2) in cm
     """
-    print(f"Turning left at {rpm} RPM for {duration}s...")
     setRPM(-rpm, rpm)
-    time.sleep(duration)
+    
+    start = time.time()
+    final_d1, final_d2 = None, None
+    
+    while time.time() - start < duration:
+        d1, d2 = getDist()
+        if d1 is not None:
+            final_d1, final_d2 = d1, d2
+    
+    return final_d1, final_d2
 
-def stop():
+def stop(duration=None):
     """
     Stop both motors
+    Args:
+        duration: Time in seconds to keep motors stopped (None = indefinite)
     """
-    print("Stopping motors...")
     setRPM(0, 0)
-    time.sleep(0.2)
+    if duration is not None:
+        time.sleep(duration)
+    else:
+        time.sleep(0.2)
 
 # Main - Example usage
 try:
     # Test forward
-    d1, d2 = forward(15, 3)
+    d1, d2 = forward(60, 3)
     print(f"Forward complete - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
     
-    stop()
-    time.sleep(1)
+    stop(1)
     
     # Test right turn
-    right(20, 2)
-    print("Right turn complete\n")
+    d1, d2 = right(20, 2)
+    print(f"Right turn complete - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
     
-    stop()
-    time.sleep(1)
+    stop(1)
     
     # Test backward
-    d1, d2 = backward(15, 3)
+    d1, d2 = backward(60, 3)
     print(f"Backward complete - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
     
-    stop()
-    time.sleep(1)
+    stop(1)
     
     # Test left turn
-    left(20, 2)
-    print("Left turn complete\n")
+    d1, d2 = left(20, 2)
+    print(f"Left turn complete - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
     
     stop()
     
