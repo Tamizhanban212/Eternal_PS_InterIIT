@@ -34,10 +34,11 @@ def main():
             
             # Stop motors
             print("Stopping motors...")
-            motors.stop()
+            motors.setRPM(0, 0)
+            time.sleep(2)
             motors.setRPM(25, 25)
             time.sleep(5)
-            
+
         print("="*60)
         print("TEST COMPLETED")
         print("="*60 + "\n")
