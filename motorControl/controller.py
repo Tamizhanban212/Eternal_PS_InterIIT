@@ -118,7 +118,7 @@ class MotorController:
             tuple: (distance1, distance2) in cm
         """
         ramp_duration = 0.5  # 0.2 seconds for ramp-up and ramp-down
-        ramp_steps = 20  # Number of steps in the ramp
+        ramp_steps = 7  # Number of steps in the ramp
         ramp_step_time = ramp_duration / ramp_steps
         
         start = time.time()
