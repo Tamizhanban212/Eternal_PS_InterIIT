@@ -155,11 +155,17 @@ class MotorController:
         for i in range(steps, 0, -1):
             target_rpm1 = sign1 * rpm1_step * i
             target_rpm2 = sign2 * rpm2_step * i
-            self.setRPM(target_rpm1, target_rpm2)
+            
+            # Send RPM values directly without using setRPM to avoid overhead
+            message = f"{target_rpm1},{target_rpm2}\n"
+            self.arduino.write(message.encode('utf-8'))
             time.sleep(step_delay)
         
         # Final stop at exactly 0
-        self.setRPM(0, 0)
+        message = "0,0\n"
+        self.arduino.write(message.encode('utf-8'))
+        self.current_rpm1 = 0
+        self.current_rpm2 = 0
     
     def close(self):
         """
