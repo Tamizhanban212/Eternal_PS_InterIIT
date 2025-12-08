@@ -26,13 +26,15 @@ class MotorTeleopGUI:
         
         # Initialize motor controller
         self.motor = None
-        self.init_motor_controller()
         
         # Current RPM value
         self.current_rpm = 50
         
-        # Create GUI
+        # Create GUI first
         self.create_widgets()
+        
+        # Then initialize motor controller
+        self.init_motor_controller()
         
     def init_motor_controller(self):
         """Initialize motor controller connection"""
