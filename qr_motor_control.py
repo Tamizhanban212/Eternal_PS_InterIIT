@@ -279,7 +279,7 @@ def main():
             
             # Wait and scan for QR code
             print(f"\nScanning for QR code at position {current_position} cm...")
-            qr_data = scan_qr_at_position(cap, timeout=3)
+            qr_data = scan_qr_at_position(cap, timeout=6)
             
             if qr_data:
                 parsed = parse_qr_data(qr_data)
@@ -297,6 +297,20 @@ def main():
         print("All stages completed!")
         print(f"Final grid contains {len(grid)} entries")
         print(f"{'='*50}")
+        
+        # Return to home position (offset)
+        if current_position != OFFSET:
+            print(f"\nReturning to home position ({OFFSET} cm)...")
+            distance = abs(OFFSET - current_position)
+            direction = 1 if OFFSET > current_position else 0
+            direction_text = "UP" if direction == 1 else "DOWN"
+            
+            print(f"Moving {direction_text} {distance:.1f} cm...")
+            z_axis(distance, direction)
+            current_position = OFFSET
+            print(f"✓ Returned to home position: {OFFSET} cm")
+        else:
+            print(f"\nAlready at home position: {OFFSET} cm")
     
     except KeyboardInterrupt:
         print("\n\nOperation interrupted by user")
