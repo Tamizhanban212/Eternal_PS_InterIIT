@@ -340,15 +340,18 @@ def main():
         else:
             print(f"\nAlready at home position: {OFFSET} cm")
         
-        # Stop camera thread
+        # Stop camera thread AFTER returning to home
+        print("\nStopping camera...")
         running_flag[0] = False
         time.sleep(0.5)  # Give thread time to close
         cv2.destroyAllWindows()
     
     except KeyboardInterrupt:
         print("\n\nOperation interrupted by user")
+        running_flag[0] = False
     except Exception as e:
         print(f"\nError: {e}")
+        running_flag[0] = False
     finally:
         # Cleanup
         cap.release()
