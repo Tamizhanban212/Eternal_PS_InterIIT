@@ -327,18 +327,29 @@ def main():
         print(f"{'='*50}")
         
         # Return to home position (offset)
+        print(f"\nCurrent position: {current_position} cm")
+        print(f"Target home position: {OFFSET} cm")
+        
         if current_position != OFFSET:
             print(f"\nReturning to home position ({OFFSET} cm)...")
             distance = abs(OFFSET - current_position)
             direction = 1 if OFFSET > current_position else 0
             direction_text = "UP" if direction == 1 else "DOWN"
             
-            print(f"Moving {direction_text} {distance:.1f} cm...")
+            print(f"Distance to move: {distance:.1f} cm")
+            print(f"Direction: {direction_text} (direction={direction})")
+            print(f"Calling z_axis({distance}, {direction})...")
+            
             z_axis(distance, direction)
+            
             current_position = OFFSET
-            print(f"✓ Returned to home position: {OFFSET} cm")
+            print(f"✓ Movement command sent - Should be at home position: {OFFSET} cm")
         else:
             print(f"\nAlready at home position: {OFFSET} cm")
+        
+        # Wait a moment for movement to complete
+        print("\nWaiting for movement to complete...")
+        time.sleep(2)
         
         # Stop camera thread AFTER returning to home
         print("\nStopping camera...")
