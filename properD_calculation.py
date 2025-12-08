@@ -117,7 +117,7 @@ def stop(duration=None):
 # Main - Example usage
 try:
     # Test forward
-    d1, d2 = forward(60, 3)
+    d1, d2 = forward(20, 3)
     print(f"Forward complete - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
     
     stop(1)
@@ -129,7 +129,7 @@ try:
     stop(1)
     
     # Test backward
-    d1, d2 = backward(60, 3)
+    d1, d2 = backward(20, 3)
     print(f"Backward complete - Final distances: D1={d1:.2f} cm, D2={d2:.2f} cm\n")
     
     stop(1)
