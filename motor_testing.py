@@ -28,13 +28,13 @@ def main():
                 if dist1 is not None and dist2 is not None:
                     elapsed = time.time() - start_time
                     print(f"  {elapsed:.1f}s - Motor 1: {dist1:.2f} cm, Motor 2: {dist2:.2f} cm")
-                time.sleep(0.5)
+                time.sleep(0.05)
             
             print()
             
-            # Stop motors
-            print("Stopping motors...")
-            motors.stop()
+            # # Stop motors
+            # print("Stopping motors...")
+            # motors.stop()
         
         print("="*60)
         print("TEST COMPLETED")
