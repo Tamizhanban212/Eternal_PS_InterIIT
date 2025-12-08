@@ -135,18 +135,26 @@ class MotorController:
         if self.arduino is None:
             return
         
+        # Get absolute values for ramping
+        abs_rpm1 = abs(self.current_rpm1)
+        abs_rpm2 = abs(self.current_rpm2)
+        
         # Number of steps for smooth ramp
         steps = 10
         step_delay = ramp_time / steps
         
         # Calculate RPM decrements per step
-        rpm1_step = self.current_rpm1 / steps
-        rpm2_step = self.current_rpm2 / steps
+        rpm1_step = abs_rpm1 / steps
+        rpm2_step = abs_rpm2 / steps
+        
+        # Determine direction signs
+        sign1 = 1 if self.current_rpm1 >= 0 else -1
+        sign2 = 1 if self.current_rpm2 >= 0 else -1
         
         # Gradually reduce RPM to zero
         for i in range(steps, 0, -1):
-            target_rpm1 = rpm1_step * i
-            target_rpm2 = rpm2_step * i
+            target_rpm1 = sign1 * rpm1_step * i
+            target_rpm2 = sign2 * rpm2_step * i
             self.setRPM(target_rpm1, target_rpm2)
             time.sleep(step_delay)
         

@@ -19,29 +19,35 @@ def main():
             print("Setting motors to 15 RPM (forward)...")
             motors.setRPM(15, 15)
             
-            print("Running for 4 seconds...\n")
-            time.sleep(4)
+            print("Running for 4 seconds...")
             
-            # Get distance after forward motion
-            dist1, dist2 = motors.getDist()
-            if dist1 is not None and dist2 is not None:
-                print(f"After 4s forward:")
-                print(f"  Motor 1 Distance: {dist1:.2f} cm")
-                print(f"  Motor 2 Distance: {dist2:.2f} cm\n")
+            # Continuously print distance for 4 seconds
+            start_time = time.time()
+            while time.time() - start_time < 4:
+                dist1, dist2 = motors.getDist()
+                if dist1 is not None and dist2 is not None:
+                    elapsed = time.time() - start_time
+                    print(f"  {elapsed:.1f}s - Motor 1: {dist1:.2f} cm, Motor 2: {dist2:.2f} cm")
+                time.sleep(0.5)
+            
+            print()
             
             # Reverse motion at -15 RPM for 4 seconds
             print("Setting motors to -15 RPM (reverse)...")
             motors.setRPM(-15, -15)
             
-            print("Running for 4 seconds...\n")
-            time.sleep(4)
+            print("Running for 4 seconds...")
             
-            # Get distance after reverse motion
-            dist1, dist2 = motors.getDist()
-            if dist1 is not None and dist2 is not None:
-                print(f"After 4s reverse:")
-                print(f"  Motor 1 Distance: {dist1:.2f} cm")
-                print(f"  Motor 2 Distance: {dist2:.2f} cm\n")
+            # Continuously print distance for 4 seconds
+            start_time = time.time()
+            while time.time() - start_time < 4:
+                dist1, dist2 = motors.getDist()
+                if dist1 is not None and dist2 is not None:
+                    elapsed = time.time() - start_time
+                    print(f"  {elapsed:.1f}s - Motor 1: {dist1:.2f} cm, Motor 2: {dist2:.2f} cm")
+                time.sleep(0.5)
+            
+            print()
             
             # Stop motors
             print("Stopping motors...")
