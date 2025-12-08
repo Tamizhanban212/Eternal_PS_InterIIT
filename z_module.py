@@ -114,7 +114,7 @@ class Motor:
 
 
 # Import controller
-from controller import ZAxisController
+from z_controller import ZAxisController
 
 
 class ZControlApp:
