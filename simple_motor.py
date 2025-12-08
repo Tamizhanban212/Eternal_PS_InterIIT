@@ -33,9 +33,12 @@ def getDist():
 
 # Main
 try:
-
-    setRPM(0, 0)
-
+    setRPM(15, 15)
+    time.sleep(5)
+    setRPM(0,0)
+    time.sleep(2)
+    setRPM(-15, -15)
+    time.sleep(2)
     
 except KeyboardInterrupt:
     setRPM(0, 0)
