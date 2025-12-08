@@ -11,6 +11,7 @@ import sys
 import time
 from motorControl.controller import MotorController
 
+
 # Robot physical parameters
 WHEEL_DIAMETER = 20.32  # cm
 WHEEL_SEPARATION = 51.0  # cm
