@@ -33,14 +33,50 @@ def getDist():
 
 # Main
 try:
+    # Forward 5 seconds
+    print("Forward 15 RPM for 5 seconds...")
     setRPM(15, 15)
-    time.sleep(5)
-    setRPM(0,0)
-    time.sleep(2)
+    time.sleep(0.2)  # Wait for Arduino response
+    arduino.flushInput()  # Clear the response
+    
+    start = time.time()
+    while time.time() - start < 5:
+        d1, d2 = getDist()
+        if d1 is not None:
+            print(f"D1: {d1:.2f} cm, D2: {d2:.2f} cm")
+    
+    # Stop 2 seconds
+    print("\nStopping for 2 seconds...")
+    setRPM(0, 0)
+    time.sleep(0.2)  # Wait for Arduino response
+    arduino.flushInput()  # Clear the response
+    time.sleep(1.8)  # Rest of 2 seconds
+    
+    # Reverse 5 seconds
+    print("\nReverse -15 RPM for 5 seconds...")
     setRPM(-15, -15)
-    time.sleep(2)
+    time.sleep(0.2)  # Wait for Arduino response
+    arduino.flushInput()  # Clear the response
+    
+    start = time.time()
+    while time.time() - start < 5:
+        d1, d2 = getDist()
+        if d1 is not None:
+            print(f"D1: {d1:.2f} cm, D2: {d2:.2f} cm")
+    
+    # Final stop
+    print("\nFinal stop...")
+    setRPM(0, 0)
+    time.sleep(0.2)
+    
+    print("\nDone!")
     
 except KeyboardInterrupt:
+    print("\nInterrupted!")
+    setRPM(0, 0)
+except Exception as e:
+    print(f"\nError: {e}")
     setRPM(0, 0)
 finally:
     arduino.close()
+    print("Connection closed")
