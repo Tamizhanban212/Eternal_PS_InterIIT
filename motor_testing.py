@@ -23,7 +23,7 @@ def main():
             
             # Stop for 2 seconds
             print("Stopping for 2 seconds...")
-            motors.stop(2)
+            time.sleep(2)
             
             # Backward for 5 seconds at 90 RPM
             print("Moving BACKWARD at 90 RPM for 5 seconds...")
@@ -32,7 +32,7 @@ def main():
             
             # Stop for 2 seconds
             print("Stopping for 2 seconds...")
-            motors.stop(2)
+            time.sleep(2)
             
             # Right turn for 5 seconds at 30 RPM (Motor1 backward, Motor2 forward)
             print("Turning RIGHT at 30 RPM for 5 seconds...")
@@ -41,7 +41,7 @@ def main():
             
             # Stop for 2 seconds
             print("Stopping for 2 seconds...")
-            motors.stop(2)
+            time.sleep(2)
             
             # Left turn for 5 seconds at 30 RPM (Motor1 forward, Motor2 backward)
             print("Turning LEFT at 30 RPM for 5 seconds...")
