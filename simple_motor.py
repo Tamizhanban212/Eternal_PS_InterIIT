@@ -33,35 +33,9 @@ def getDist():
 
 # Main
 try:
-    # Forward 5 seconds
-    print("Forward 15 RPM for 5 seconds...")
-    setRPM(15, 15)
-    start = time.time()
-    while time.time() - start < 5:
-        d1, d2 = getDist()
-        if d1 is not None:
-            print(f"D1: {d1:.2f} cm, D2: {d2:.2f} cm")
-    
-    # Stop 2 seconds
-    print("\nStopping for 2 seconds...")
+
     setRPM(0, 0)
-    time.sleep(2)
-    
-    # Reverse 5 seconds
-    print("\nReverse -15 RPM for 5 seconds...")
-    setRPM(-15, -15)
-    start = time.time()
-    while time.time() - start < 5:
-        d1, d2 = getDist()
-        if d1 is not None:
-            print(f"D1: {d1:.2f} cm, D2: {d2:.2f} cm")
-    
-    # Stop 2 seconds
-    print("\nStopping for 2 seconds...")
-    setRPM(0, 0)
-    time.sleep(2)
-    
-    print("\nDone!")
+
     
 except KeyboardInterrupt:
     setRPM(0, 0)
