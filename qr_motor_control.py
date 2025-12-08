@@ -12,6 +12,7 @@ import csv
 import re
 import os
 import time
+import json
 from z_module import init_z_axis, z_axis, cleanup_z_axis
 
 def parse_qr_data(qr_text):
@@ -166,19 +167,36 @@ def scan_qr_at_position(cap, timeout=3):
 def get_stage_positions():
     """
     Get stage positions (in cm) from user input until 'stop' is entered.
+    If user types 'stop' immediately, load from saved JSON file.
     Returns: list of positions in cm
     """
+    json_file = 'stage_positions.json'
     positions = []
+    
     print("\n" + "="*50)
     print("Enter stage positions in cm (31-185 cm)")
     print("Type 'stop' when done")
     print("="*50)
     
+    first_input = True
+    
     while True:
         user_input = input("Enter position (cm): ").strip().lower()
         
         if user_input == 'stop':
+            # If first input is 'stop', load from saved file
+            if first_input and os.path.exists(json_file):
+                try:
+                    with open(json_file, 'r') as f:
+                        saved_data = json.load(f)
+                        positions = saved_data.get('positions', [])
+                        print(f"✓ Loaded {len(positions)} saved positions from {json_file}")
+                        print(f"Positions: {positions}")
+                except Exception as e:
+                    print(f"✗ Error loading saved positions: {e}")
             break
+        
+        first_input = False
         
         try:
             position = float(user_input)
@@ -189,6 +207,15 @@ def get_stage_positions():
                 print("✗ Position must be between 31 and 185 cm")
         except ValueError:
             print("✗ Invalid input. Enter a number or 'stop'")
+    
+    # Save positions to JSON file if new positions were entered
+    if positions and not first_input:
+        try:
+            with open(json_file, 'w') as f:
+                json.dump({'positions': positions}, f, indent=2)
+            print(f"✓ Saved {len(positions)} positions to {json_file}")
+        except Exception as e:
+            print(f"✗ Error saving positions: {e}")
     
     return positions
 
