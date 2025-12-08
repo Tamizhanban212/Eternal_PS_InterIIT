@@ -1,4 +1,4 @@
-name: base
+name: eternal
 channels:
   - defaults
   - https://repo.anaconda.com/pkgs/main
