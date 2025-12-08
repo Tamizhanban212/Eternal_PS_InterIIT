@@ -151,7 +151,7 @@ class MotorController:
     
     def right(self, rpm, duration):
         """
-        Turn right - Motor1 forward, Motor2 backward
+        Turn right - Motor1 backward, Motor2 forward
         
         Args:
             rpm: Target RPM
@@ -160,7 +160,7 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        self.setRPM(rpm, -rpm)
+        self.setRPM(-rpm, rpm)
         
         start = time.time()
         final_d1, final_d2 = None, None
@@ -174,7 +174,7 @@ class MotorController:
     
     def left(self, rpm, duration):
         """
-        Turn left - Motor1 backward, Motor2 forward
+        Turn left - Motor1 forward, Motor2 backward
         
         Args:
             rpm: Target RPM
@@ -183,7 +183,7 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        self.setRPM(-rpm, rpm)
+        self.setRPM(rpm, -rpm)
         
         start = time.time()
         final_d1, final_d2 = None, None
