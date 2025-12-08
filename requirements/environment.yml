@@ -6,6 +6,7 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=main
   - _openmp_mutex=5.1=1_gnu
+  - bzip2=1.0.8=h5eee18b_6
   - ca-certificates=2025.11.4=h06a4308_0
   - expat=2.7.3=h3385a95_0
   - ld_impl_linux-64=2.44=h153f514_2
