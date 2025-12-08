@@ -195,6 +195,54 @@ class MotorController:
         
         return final_d1, final_d2
     
+    def setBothMotors(self, rpm1, rpm2, time1, time2):
+        """
+        Set different RPMs and durations for each motor independently
+        
+        Args:
+            rpm1: Target RPM for motor 1
+            rpm2: Target RPM for motor 2
+            time1: Duration in seconds for motor 1
+            time2: Duration in seconds for motor 2
+        
+        Returns:
+            tuple: (distance1, distance2) in cm
+        """
+        # Set both motors to their respective RPMs
+        self.setRPM(rpm1, rpm2)
+        
+        # Run for the maximum duration to capture both motors
+        max_time = max(time1, time2)
+        start = time.time()
+        final_d1, final_d2 = None, None
+        
+        # Track when each motor should stop
+        motor1_stopped = False
+        motor2_stopped = False
+        
+        while time.time() - start < max_time:
+            elapsed = time.time() - start
+            
+            # Stop motor 1 when its time is up
+            if not motor1_stopped and elapsed >= time1:
+                self.arduino.write(f"0,{rpm2}\n".encode('utf-8'))
+                motor1_stopped = True
+            
+            # Stop motor 2 when its time is up
+            if not motor2_stopped and elapsed >= time2:
+                self.arduino.write(f"{rpm1},0\n".encode('utf-8'))
+                motor2_stopped = True
+            
+            # Get distance readings
+            d1, d2 = self.getDist()
+            if d1 is not None:
+                final_d1, final_d2 = d1, d2
+        
+        # Ensure both motors are stopped
+        self.stop()
+        
+        return final_d1, final_d2
+    
     def stop(self, duration=None):
         """
         Stop both motors
