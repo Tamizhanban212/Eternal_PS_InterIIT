@@ -5,8 +5,8 @@ import time
 init_z_axis()
 
 try:
-    # Move 20 cm UP
-    z_axis(20, 1)
+    # Move 50 cm UP
+    z_axis(50, 1)
     time.sleep(2)
     
     # Move 30 cm DOWN
@@ -15,6 +15,22 @@ try:
     
     # Move 15 cm UP
     z_axis(15, 1)
+    time.sleep(2)
+    
+    # Move 10 cm DOWN
+    z_axis(10, 0)
+    time.sleep(2)
+    
+    # Move 25 cm UP
+    z_axis(25, 1)
+    time.sleep(2)
+    
+    # Move 20 cm DOWN
+    z_axis(20, 0)
+    time.sleep(2)
+    
+    # Move 5 cm UP
+    z_axis(5, 1)
     
 finally:
     cleanup_z_axis()
