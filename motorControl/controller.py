@@ -9,7 +9,7 @@ import time
 
 class MotorController:
     def __init__(self, port='/dev/ttyACM0', baudrate=115200, timeout=0.1, 
-                 ramp_time=1.0, ramp_steps=20):
+                 ramp_time=0.5, ramp_steps=15, min_rpm=90):
         """
         Initialize motor controller
         
@@ -17,12 +17,14 @@ class MotorController:
             port: Serial port (usually /dev/ttyACM0 or /dev/ttyUSB0)
             baudrate: Communication speed (must match Arduino - 115200)
             timeout: Read timeout in seconds
-            ramp_time: Time in seconds to ramp up/down (default 1.0s)
-            ramp_steps: Number of steps in ramping (default 20)
+            ramp_time: Time in seconds to ramp up/down (default 0.5s)
+            ramp_steps: Number of steps in ramping (default 15)
+            min_rpm: Minimum RPM threshold for motor operation (default 90)
         """
         self.arduino = None
         self.ramp_time = ramp_time
         self.ramp_steps = ramp_steps
+        self.min_rpm = min_rpm
         self.current_rpm1 = 0.0
         self.current_rpm2 = 0.0
         self.connect(port, baudrate, timeout)
@@ -54,41 +56,41 @@ class MotorController:
             self.arduino = None
             return False
     
-    def setRPM(self, rpm1, rpm2, smooth=False):
+    def setRPM(self, rpm1, rpm2):
         """
-        Set target RPM for both motors
+        Set target RPM for both motors with automatic smoothing
+        Applies minimum RPM threshold if motors won't rotate below it
         
         Args:
-            rpm1: Target RPM for motor 1 (float)
-            rpm2: Target RPM for motor 2 (float)
-            smooth: If True, apply ramping to avoid jerks (default False for backward compatibility)
+            rpm1: Target RPM for motor 1 (float, use negative for reverse)
+            rpm2: Target RPM for motor 2 (float, use negative for reverse)
         
         Returns:
             bool: True if successful, False otherwise
         """
-        if smooth:
-            return self._setRPMSmooth(rpm1, rpm2)
+        # Apply minimum RPM threshold (preserve direction)
+        adjusted_rpm1 = self._applyMinRPM(rpm1)
+        adjusted_rpm2 = self._applyMinRPM(rpm2)
         
-        if self.arduino is None:
-            print("No serial connection available")
-            return False
+        return self._setRPMSmooth(adjusted_rpm1, adjusted_rpm2)
+    
+    def _applyMinRPM(self, rpm):
+        """
+        Apply minimum RPM threshold - if RPM is below minimum, either set to 0 or min_rpm
         
-        try:
-            # Send RPM values as comma-separated string with newline
-            message = f"{rpm1},{rpm2}\n"
-            self.arduino.write(message.encode('utf-8'))
-            time.sleep(0.2)
-            self.arduino.flushInput()
-            
-            # Update current RPM tracking
-            self.current_rpm1 = rpm1
-            self.current_rpm2 = rpm2
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error setting RPM: {e}")
-            return False
+        Args:
+            rpm: Requested RPM (can be negative for reverse)
+        
+        Returns:
+            float: Adjusted RPM respecting minimum threshold
+        """
+        if rpm == 0:
+            return 0
+        elif abs(rpm) < self.min_rpm:
+            # If below minimum, use minimum RPM in the same direction
+            return self.min_rpm if rpm > 0 else -self.min_rpm
+        else:
+            return rpm
     
     def _setRPMSmooth(self, target_rpm1, target_rpm2):
         """
@@ -163,22 +165,22 @@ class MotorController:
             print(f"Error reading distance: {e}")
             return None, None
     
-    def setBothMotors(self, rpm1, rpm2, time1, time2, smooth=True):
+    def setBothMotors(self, rpm1, rpm2, time1, time2):
         """
         Set different RPMs and durations for each motor independently
+        Automatically applies smoothing and minimum RPM threshold
         
         Args:
-            rpm1: Target RPM for motor 1
-            rpm2: Target RPM for motor 2
+            rpm1: Target RPM for motor 1 (use negative for reverse)
+            rpm2: Target RPM for motor 2 (use negative for reverse)
             time1: Duration in seconds for motor 1
             time2: Duration in seconds for motor 2
-            smooth: Apply smooth ramping (default True)
         
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        # Set both motors to their respective RPMs with optional smoothing
-        self.setRPM(rpm1, rpm2, smooth=smooth)
+        # Set both motors to their respective RPMs (smoothing always enabled)
+        self.setRPM(rpm1, rpm2)
         
         # Run for the maximum duration to capture both motors
         max_time = max(time1, time2)
@@ -192,20 +194,14 @@ class MotorController:
         while time.time() - start < max_time:
             elapsed = time.time() - start
             
-            # Stop motor 1 when its time is up (with smoothing if enabled)
+            # Stop motor 1 when its time is up (smooth deceleration)
             if not motor1_stopped and elapsed >= time1:
-                if smooth:
-                    self._stopMotorSmooth(motor=1, keep_motor2=rpm2)
-                else:
-                    self.arduino.write(f"0,{rpm2}\n".encode('utf-8'))
+                self._stopMotorSmooth(motor=1, keep_motor2=rpm2)
                 motor1_stopped = True
             
-            # Stop motor 2 when its time is up (with smoothing if enabled)
+            # Stop motor 2 when its time is up (smooth deceleration)
             if not motor2_stopped and elapsed >= time2:
-                if smooth:
-                    self._stopMotorSmooth(motor=2, keep_motor1=rpm1)
-                else:
-                    self.arduino.write(f"{rpm1},0\n".encode('utf-8'))
+                self._stopMotorSmooth(motor=2, keep_motor1=rpm1)
                 motor2_stopped = True
             
             # Get distance readings
@@ -214,7 +210,7 @@ class MotorController:
                 final_d1, final_d2 = d1, d2
         
         # Ensure both motors are stopped
-        self.stop(smooth=smooth)
+        self.stop()
         
         return final_d1, final_d2
     
@@ -232,15 +228,14 @@ class MotorController:
         elif motor == 2:
             self._setRPMSmooth(keep_motor1, 0)
     
-    def stop(self, duration=None, smooth=True):
+    def stop(self, duration=None):
         """
-        Stop both motors
+        Stop both motors with smooth deceleration
         
         Args:
             duration: Time in seconds to keep motors stopped (None = brief stop)
-            smooth: Apply smooth deceleration (default True)
         """
-        self.setRPM(0, 0, smooth=smooth)
+        self.setRPM(0, 0)
         if duration is not None:
             time.sleep(duration)
         else:
