@@ -114,23 +114,12 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        ramp_time = 0.5  # Last 0.5 seconds for smooth deceleration
-        
         self.setRPM(rpm, rpm)
         
         start = time.time()
         final_d1, final_d2 = None, None
         
         while time.time() - start < duration:
-            elapsed = time.time() - start
-            remaining = duration - elapsed
-            
-            # Apply deceleration ramp in the last 0.5 seconds
-            if remaining < ramp_time and remaining > 0:
-                ramp_factor = remaining / ramp_time
-                current_rpm = rpm * ramp_factor
-                self.setRPM(current_rpm, current_rpm)
-            
             d1, d2 = self.getDist()
             if d1 is not None:
                 final_d1, final_d2 = d1, d2
@@ -148,18 +137,18 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        ramp_time = 0.5  # Last 0.5 seconds for smooth deceleration
-        
         self.setRPM(-rpm, -rpm)
         
         start = time.time()
         final_d1, final_d2 = None, None
         
         while time.time() - start < duration:
-            elapsed = time.time() - start
-            remaining = duration - elapsed
-            
-            # Apply deceleration ramp in the last 0.5 seconds
+            d1, d2 = self.getDist()
+            if d1 is not None:
+                final_d1, final_d2 = d1, d2
+        
+        return final_d1, final_d2
+    
     def right(self, rpm, duration):
         """
         Turn right - Motor1 backward, Motor2 forward
@@ -171,29 +160,18 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        ramp_time = 0.5  # Last 0.5 seconds for smooth deceleration
-        
         self.setRPM(-rpm, rpm)
         
         start = time.time()
         final_d1, final_d2 = None, None
         
         while time.time() - start < duration:
-            elapsed = time.time() - start
-            remaining = duration - elapsed
-            
-            # Apply deceleration ramp in the last 0.5 seconds
-            if remaining < ramp_time and remaining > 0:
-                ramp_factor = remaining / ramp_time
-                current_rpm = rpm * ramp_factor
-                self.setRPM(-current_rpm, current_rpm)
-            
             d1, d2 = self.getDist()
             if d1 is not None:
                 final_d1, final_d2 = d1, d2
         
         return final_d1, final_d2
-        self.setRPM(-rpm, rpm)
+    
     def left(self, rpm, duration):
         """
         Turn left - Motor1 forward, Motor2 backward
@@ -205,18 +183,18 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        ramp_time = 0.5  # Last 0.5 seconds for smooth deceleration
-        
         self.setRPM(rpm, -rpm)
         
         start = time.time()
         final_d1, final_d2 = None, None
         
         while time.time() - start < duration:
-            elapsed = time.time() - start
-            remaining = duration - elapsed
-            
-            # Apply deceleration ramp in the last 0.5 seconds
+            d1, d2 = self.getDist()
+            if d1 is not None:
+                final_d1, final_d2 = d1, d2
+        
+        return final_d1, final_d2
+    
     def setBothMotors(self, rpm1, rpm2, time1, time2):
         """
         Set different RPMs and durations for each motor independently
@@ -230,8 +208,6 @@ class MotorController:
         Returns:
             tuple: (distance1, distance2) in cm
         """
-        ramp_time = 0.5  # Last 0.5 seconds for smooth deceleration
-        
         # Set both motors to their respective RPMs
         self.setRPM(rpm1, rpm2)
         
@@ -240,43 +216,10 @@ class MotorController:
         start = time.time()
         final_d1, final_d2 = None, None
         
-        while time.time() - start < max_time:
-            elapsed = time.time() - start
-            
-            # Calculate remaining time for each motor
-            remaining1 = time1 - elapsed
-            remaining2 = time2 - elapsed
-            
-            # Apply deceleration ramp for motor 1
-            if remaining1 > 0 and remaining1 < ramp_time:
-                ramp_factor1 = remaining1 / ramp_time
-                current_rpm1 = rpm1 * ramp_factor1
-            elif remaining1 <= 0:
-                current_rpm1 = 0
-            else:
-                current_rpm1 = rpm1
-            
-            # Apply deceleration ramp for motor 2
-            if remaining2 > 0 and remaining2 < ramp_time:
-                ramp_factor2 = remaining2 / ramp_time
-                current_rpm2 = rpm2 * ramp_factor2
-            elif remaining2 <= 0:
-                current_rpm2 = 0
-            else:
-                current_rpm2 = rpm2
-            
-            # Update motor speeds
-            self.setRPM(current_rpm1, current_rpm2)
-            
-            # Get distance readings
-            d1, d2 = self.getDist()
-            if d1 is not None:
-                final_d1, final_d2 = d1, d2
+        # Track when each motor should stop
+        motor1_stopped = False
+        motor2_stopped = False
         
-        # Ensure both motors are stopped
-        self.stop()
-        
-        return final_d1, final_d2
         while time.time() - start < max_time:
             elapsed = time.time() - start
             
