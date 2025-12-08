@@ -148,14 +148,11 @@ if __name__ == "__main__":
     with MotorController() as motors:
         # Set motor speeds
         motors.setRPM(-15, -15)
-        
-        # Monitor distances for 5 seconds
-        print("\nMonitoring distances for 5 seconds...")
-        start_time = time.time()
-        while time.time() - start_time < 5:
-            dist1, dist2 = motors.getDist()
-            if dist1 is not None and dist2 is not None:
-                print(f"Distance 1: {dist1:.2f} cm, Distance 2: {dist2:.2f} cm")
-            time.sleep(0.1)
+        time.sleep(5)
         motors.stop()
+        time.sleep(2)
+        motors.setRPM(10, 10)
+        time.sleep(5)
+        motors.stop()
+        time.sleep(2)
         # Motors will automatically stop when exiting the context
