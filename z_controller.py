@@ -63,8 +63,8 @@ class ZAxisController:
             self.motor.ramp_to_speed(speed_percent, direction)
             # Wait for duration
             time.sleep(duration)
-            # Stop smoothly
-            self.motor.stop_smooth()
+            # Stop immediately to prevent overshoot
+            self.motor.stop_immediate()
             # Update position
             self.current_position += distance_cm * direction
             print(f"Move complete. Current position: {self.current_position:.2f} cm")
