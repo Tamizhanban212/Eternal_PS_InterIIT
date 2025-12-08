@@ -9,32 +9,21 @@
 const float COUNTS_PER_REVOLUTION = 349.2;
 
 volatile long encoderCount = 0;
-volatile unsigned long lastPulseTime = 0;
-volatile unsigned long pulseInterval = 0;
-volatile int lastDirection = 1;
+long prevEncoderCount = 0;
 
 float rpmFiltered = 0;
 float rpmPrev = 0;  // For low-pass filter
 float eintegral = 0;
 float eprev = 0;  // For derivative term
+int dir = 1;  // 1=forward, 0=backward
 
 void onEncoderA() {
-  unsigned long currentTime = micros();
-  
-  // Determine direction
-  int direction;
+  // Determine direction and increment/decrement count
   if (digitalRead(ENCA) == digitalRead(ENCB)) {
     encoderCount++;
-    direction = 1;
   } else {
     encoderCount--;
-    direction = -1;
   }
-  
-  // Calculate time between pulses
-  pulseInterval = currentTime - lastPulseTime;
-  lastPulseTime = currentTime;
-  lastDirection = direction;
 }
 
 void setup() {
@@ -68,44 +57,33 @@ void loop() {
   if (now - lastPrint >= 100) {
     lastPrint = now;
     
-    unsigned long interval;
-    int dir;
-    unsigned long timeSinceLastPulse;
-    
-    noInterrupts();
-    interval = pulseInterval;
-    dir = lastDirection;
-    timeSinceLastPulse = micros() - lastPulseTime;
-    interrupts();
-    
-    float rpm = 0;
-    
-    // If motor is stopped (no pulse in last 200ms), RPM is 0
-    if (timeSinceLastPulse > 200000) {
-      rpm = 0;
-    }
-    // Calculate RPM from pulse interval
-    else if (interval > 0) {
-      // interval is time for ONE encoder count in microseconds
-      // Convert to counts per second, then to RPM
-      float countsPerSecond = 1000000.0 / interval;
-      rpm = (countsPerSecond / COUNTS_PER_REVOLUTION) * 60.0 * dir;
+    long currentCount;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+      currentCount = encoderCount;
     }
     
-    // Apply exponential smoothing filter
-    float alpha = 0.3;
-    rpmFiltered = alpha * rpm + (1 - alpha) * rpmFiltered;
+    // Calculate RPM using change in encoder count over time interval
+    long deltaCount = currentCount - prevEncoderCount;
+    float deltaTime = 0.1;  // 100ms = 0.1s
+    
+    // Convert to RPM: (counts/second) / (counts/revolution) * 60
+    float rpm = (deltaCount / deltaTime) / COUNTS_PER_REVOLUTION * 60.0;
+    
+    prevEncoderCount = currentCount;
     
     // Apply low-pass filter (25 Hz cutoff)
-    float v2Filt = 0.854 * rpmFiltered + 0.0728 * rpm + 0.0728 * rpmPrev;
+    float v2Filt = 0.854 * rpm + 0.0728 * rpm + 0.0728 * rpmPrev;
     rpmPrev = rpm;
-    rpmFiltered = v2Filt;
+    
+    // Apply exponential smoothing filter after low-pass
+    float alpha = 0.3;
+    rpmFiltered = alpha * v2Filt + (1 - alpha) * rpmFiltered;
 
     // Set a target rpm
-    float targetRpm = 60.0;
+    float targetRpm = 120;
 
     float kp = 0.5;
-    float ki = 3.0;
+    float ki = 2.0;
     float kd = 0.001;  // Start with a small value
 
     float e = targetRpm - rpmFiltered;
