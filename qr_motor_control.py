@@ -291,7 +291,7 @@ def main():
     print("Scanning for format: R{rack}_S{shelf}_ITM{item}")
     
     try:
-        current_position = OFFSET  # Start at home position
+        current_position = OFFSET  # Start at home position (31cm absolute)
         
         # Move through all positions
         for i, target_position in enumerate(positions, 1):
@@ -302,13 +302,19 @@ def main():
             print(f"Stage {i}/{len(positions)}: Moving to {target_position} cm")
             print(f"{'='*50}")
             
-            # Calculate distance and direction
+            # Calculate relative distance from offset (31cm)
+            # If target > current: move UP, if target < current: move DOWN
             distance = abs(target_position - current_position)
             
             if distance < 0.5:
                 print("Already at target position")
             else:
-                direction = 1 if target_position > current_position else 0
+                # Direction: 1 = UP (away from offset), 0 = DOWN (toward offset)
+                if target_position > current_position:
+                    direction = 1  # Moving UP
+                else:
+                    direction = 0  # Moving DOWN
+                
                 direction_text = "UP" if direction == 1 else "DOWN"
                 
                 print(f"Moving {direction_text} {distance:.1f} cm...")
@@ -320,15 +326,21 @@ def main():
             print(f"\nWaiting 6 seconds at position {current_position} cm for QR scanning...")
             time.sleep(6)
         
-        # Return to home position (offset)
+        # Return to home position (offset = 31cm)
         if current_position != OFFSET:
             print(f"\n{'='*50}")
             print(f"All stages completed! Returning to home position ({OFFSET} cm)...")
             print(f"{'='*50}")
             
-            distance = abs(OFFSET - current_position)
-            direction = 1 if OFFSET > current_position else 0
-            direction_text = "UP" if direction == 1 else "DOWN"
+            distance = abs(current_position - OFFSET)
+            
+            # If current > offset: move DOWN, if current < offset: move UP
+            if current_position > OFFSET:
+                direction = 0  # Moving DOWN toward offset
+                direction_text = "DOWN"
+            else:
+                direction = 1  # Moving UP toward offset
+                direction_text = "UP"
             
             print(f"Moving {direction_text} {distance:.1f} cm...")
             z_axis(distance, direction)
