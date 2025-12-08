@@ -13,6 +13,7 @@ import re
 import os
 import time
 import json
+import threading
 from z_module import init_z_axis, z_axis, cleanup_z_axis
 
 def parse_qr_data(qr_text):
@@ -119,6 +120,7 @@ def scan_qr_at_position(cap, timeout=6):
     start_time = time.time()
     detected_qr = None
     
+    # Simple scanning without blocking cv2 window
     while time.time() - start_time < timeout:
         ret, frame = cap.read()
         
@@ -133,41 +135,57 @@ def scan_qr_at_position(cap, timeout=6):
         for obj in decoded_objects:
             qr_data = obj.data.decode('utf-8')
             
-            # Draw bounding box
-            points = obj.polygon
-            if len(points) > 4:
-                hull = cv2.convexHull(np.array([point for point in points], dtype=np.float32))
-                points = hull
-            
-            n = len(points)
-            for j in range(n):
-                cv2.line(frame, tuple(points[j]), tuple(points[(j+1) % n]), (0, 255, 0), 3)
-            
-            # Display QR data
-            x = obj.rect.left
-            y = obj.rect.top
-            w = obj.rect.width
-            
-            cv2.rectangle(frame, (x, y - 30), (x + w, y), (0, 255, 0), -1)
-            cv2.putText(frame, f'{obj.type}: {qr_data}', (x, y - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
-            
             # Store the first detected QR code
             if detected_qr is None:
                 detected_qr = qr_data
                 print(f"✓ QR Code detected: {qr_data}")
         
-        # Show frame
-        cv2.imshow('QR Scanner - Scanning...', frame)
-        
-        # Non-blocking waitKey
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-            print("Scan interrupted by user")
-            break
+        # Small delay to prevent CPU overuse
+        time.sleep(0.05)
     
     print(f"Scan complete (elapsed: {time.time() - start_time:.1f}s)")
     return detected_qr
+
+def camera_feed_thread(cap, running_flag):
+    """Display camera feed in separate thread"""
+    cv2.namedWindow('QR Scanner - Live Feed', cv2.WINDOW_NORMAL)
+    
+    while running_flag[0]:
+        ret, frame = cap.read()
+        if ret:
+            # Decode and draw QR codes
+            decoded_objects = decode(frame)
+            
+            for obj in decoded_objects:
+                qr_data = obj.data.decode('utf-8')
+                
+                # Draw bounding box
+                points = obj.polygon
+                if len(points) > 4:
+                    hull = cv2.convexHull(np.array([point for point in points], dtype=np.float32))
+                    points = hull
+                
+                n = len(points)
+                for j in range(n):
+                    cv2.line(frame, tuple(points[j]), tuple(points[(j+1) % n]), (0, 255, 0), 3)
+                
+                # Display QR data
+                x = obj.rect.left
+                y = obj.rect.top
+                w = obj.rect.width
+                
+                cv2.rectangle(frame, (x, y - 30), (x + w, y), (0, 255, 0), -1)
+                cv2.putText(frame, f'{obj.type}: {qr_data}', (x, y - 10), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+            
+            cv2.imshow('QR Scanner - Live Feed', frame)
+        
+        # Non-blocking waitKey
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            running_flag[0] = False
+            break
+    
+    cv2.destroyAllWindows()
 
 def get_stage_positions():
     """
@@ -263,6 +281,11 @@ def main():
     try:
         current_position = OFFSET  # Start at home position
         
+        # Start camera feed in separate thread
+        running_flag = [True]  # Use list to make it mutable in thread
+        camera_thread = threading.Thread(target=camera_feed_thread, args=(cap, running_flag), daemon=True)
+        camera_thread.start()
+        
         for i, target_position in enumerate(positions, 1):
             print(f"\n{'='*50}")
             print(f"Stage {i}/{len(positions)}: Moving to {target_position} cm")
@@ -317,7 +340,9 @@ def main():
         else:
             print(f"\nAlready at home position: {OFFSET} cm")
         
-        # Close camera window after returning to home
+        # Stop camera thread
+        running_flag[0] = False
+        time.sleep(0.5)  # Give thread time to close
         cv2.destroyAllWindows()
     
     except KeyboardInterrupt:
