@@ -22,8 +22,8 @@ def main():
     
     try:
         # Forward movement - both motors at 90 RPM
-        print("Moving FORWARD at 90 RPM for 3 seconds...")
-        d1, d2 = motor.setBothMotors(90, 90, 3, 3)
+        print("Moving FORWARD at 30 RPM for 3 seconds...")
+        d1, d2 = motor.setBothMotors(30, 30, 3, 3)
         print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
         
         # Stop for 2 seconds
@@ -31,8 +31,8 @@ def main():
         motor.stop(duration=2)
         
         # Reverse movement - both motors at -90 RPM
-        print("Moving REVERSE at -90 RPM for 3 seconds...")
-        d1, d2 = motor.setBothMotors(-90, -90, 3, 3)
+        print("Moving REVERSE at -30 RPM for 3 seconds...")
+        d1, d2 = motor.setBothMotors(-30, -30, 3, 3)
         print(f"Distance traveled - Motor1: {d1} cm, Motor2: {d2} cm\n")
         
         # Stop for 2 seconds
