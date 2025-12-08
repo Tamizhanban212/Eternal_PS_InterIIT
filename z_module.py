@@ -44,7 +44,7 @@ RAMP_STEPS = 50
 STEP_DELAY = RAMP_TIME / RAMP_STEPS
 
 # Z-axis speed calibration
-Z_SPEED_AT_100_PERCENT = 12.0  # cm/sec at 100% duty cycle
+Z_SPEED_AT_100_PERCENT = 11.31  # cm/sec at 100% duty cycle
 
 # Global motor and controller instances
 _z_motor = None
