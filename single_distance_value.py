@@ -54,6 +54,7 @@ def send_rpm_get_distance(ser, targetRpm1, targetRpm2):
         # Send RPM values as comma-separated string with newline
         message = f"{targetRpm1},{targetRpm2}\n"
         ser.write(message.encode('utf-8'))
+        print(f"Sent to Arduino - RPM1: {targetRpm1}, RPM2: {targetRpm2}")
         
         # Wait for response
         time.sleep(0.15)  # Small delay for Arduino to process
@@ -65,51 +66,17 @@ def send_rpm_get_distance(ser, targetRpm1, targetRpm2):
             if len(distances) == 2:
                 distanceCm1 = float(distances[0])
                 distanceCm2 = float(distances[1])
+                print(f"Received from Arduino - Distance1: {distanceCm1:.2f} cm, Distance2: {distanceCm2:.2f} cm")
                 return distanceCm1, distanceCm2
             else:
+                print(f"Unexpected response format: {response}")
                 return None, None
         else:
+            print("No response from Arduino")
             return None, None
             
     except Exception as e:
         print(f"Error during communication: {e}")
-        return None, None
-
-def get_distance_only(ser):
-    """
-    Get current distance measurements without changing RPM
-    Reads the periodic output from Arduino
-    
-    Args:
-        ser: Serial connection object
-    
-    Returns:
-        tuple: (distanceCm1, distanceCm2) or (None, None) if error
-    """
-    if ser is None:
-        return None, None
-    
-    try:
-        if ser.in_waiting > 0:
-            # Read lines until we find one with distance data
-            while ser.in_waiting > 0:
-                line = ser.readline().decode('utf-8').strip()
-                # Look for the line containing "Dist1(cm):" and "Dist2(cm):"
-                if "Dist1(cm):" in line and "Dist2(cm):" in line:
-                    # Parse: Target1:X,Filtered1:Y,Target2:Z,Filtered2:W,Dist1(cm):A,Dist2(cm):B
-                    parts = line.split(',')
-                    dist1 = None
-                    dist2 = None
-                    for part in parts:
-                        if "Dist1(cm):" in part:
-                            dist1 = float(part.split(':')[1])
-                        elif "Dist2(cm):" in part:
-                            dist2 = float(part.split(':')[1])
-                    if dist1 is not None and dist2 is not None:
-                        return dist1, dist2
-        return None, None
-    except Exception as e:
-        print(f"Error reading distance: {e}")
         return None, None
 
 def main():
@@ -131,34 +98,14 @@ def main():
         rpm1 = float(input("Enter target RPM for Motor 1: "))
         rpm2 = float(input("Enter target RPM for Motor 2: "))
         
-        # Send RPM values
-        print(f"\nSetting Motor 1 RPM: {rpm1}, Motor 2 RPM: {rpm2}")
-        send_rpm_get_distance(arduino, rpm1, rpm2)
-        
-        print("\nContinuously monitoring distances (Press Ctrl+C to stop)...\n")
-        print(f"{'Time':<12} {'Distance 1 (cm)':<18} {'Distance 2 (cm)':<18}")
-        print("-" * 50)
-        
-        start_time = time.time()
-        
-        # Continuously read and display distances
-        while True:
-            dist1, dist2 = get_distance_only(arduino)
-            if dist1 is not None and dist2 is not None:
-                elapsed = time.time() - start_time
-                print(f"{elapsed:>10.1f}s  {dist1:>15.2f}  {dist2:>15.2f}")
-            time.sleep(0.1)  # Match Arduino's 100ms update rate
-            
-    except KeyboardInterrupt:
-        print("\n\nStopping motors...")
-        send_rpm_get_distance(arduino, 0, 0)
-        print("Motors stopped")
+        # Send RPM values and get distances
+        dist1, dist2 = send_rpm_get_distance(arduino, rpm1, rpm2)
         
     finally:
         # Clean up
         if arduino and arduino.is_open:
             arduino.close()
-            print("Arduino connection closed")
+            print("\nArduino connection closed")
 
 if __name__ == "__main__":
     main()
