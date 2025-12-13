@@ -89,15 +89,15 @@ class RobotControlGUI:
         self.t_rpm_entry = ttk.Entry(config_frame, width=10)
         self.t_rpm_entry.grid(row=4, column=1, padx=5, pady=5)
         
-        # Turn time input (manual or calculated)
-        ttk.Label(config_frame, text="Turn Time (sec):").grid(row=4, column=2, sticky=tk.W, padx=5, pady=5)
-        self.t_time_entry = ttk.Entry(config_frame, width=10)
-        self.t_time_entry.grid(row=4, column=3, padx=5, pady=5)
+        # Calculated turn time display
+        ttk.Label(config_frame, text="Turn Time (90°):").grid(row=4, column=2, sticky=tk.W, padx=5, pady=5)
+        self.t_time_label = ttk.Label(config_frame, text="N/A", foreground="blue")
+        self.t_time_label.grid(row=4, column=3, padx=5, pady=5)
         
-        # Linear time input (manual or calculated)
-        ttk.Label(config_frame, text="Linear Time (sec):").grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
-        self.l_time_entry = ttk.Entry(config_frame, width=10)
-        self.l_time_entry.grid(row=5, column=1, padx=5, pady=5)
+        # Calculated linear time display
+        ttk.Label(config_frame, text="Linear Time:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
+        self.l_time_label = ttk.Label(config_frame, text="N/A", foreground="blue")
+        self.l_time_label.grid(row=5, column=1, padx=5, pady=5)
         
         # Calculate button
         calc_btn = ttk.Button(config_frame, text="Calculate Times", command=self.calculate_times)
@@ -119,9 +119,6 @@ class RobotControlGUI:
         
         self.scan_btn = ttk.Button(btn_frame1, text="SCAN", command=self.start_scan_sequence, width=15, state=tk.DISABLED)
         self.scan_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.refresh_btn = ttk.Button(btn_frame1, text="REFRESH", command=self.refresh_motors, width=15, state=tk.DISABLED)
-        self.refresh_btn.pack(side=tk.LEFT, padx=5)
         
         # Direction buttons
         btn_frame2 = ttk.Frame(control_frame)
@@ -195,11 +192,10 @@ class RobotControlGUI:
             time_minutes = arc_length / wheel_speed_cm_per_min
             
             # Convert to seconds
-            t_time = time_minutes * 60
+            self.t_time = time_minutes * 60
             
-            self.t_time_entry.delete(0, tk.END)
-            self.t_time_entry.insert(0, f"{t_time:.2f}")
-            self.log(f"✓ Turn time calculated: {t_time:.2f} seconds for 90° turn")
+            self.t_time_label.config(text=f"{self.t_time:.2f} sec")
+            self.log(f"✓ Turn time calculated: {self.t_time:.2f} seconds for 90° turn")
             
             # Calculate linear time
             l_rpm = float(self.l_rpm_entry.get())
@@ -212,14 +208,15 @@ class RobotControlGUI:
             
             # Linear movement time
             wheel_speed_linear = l_rpm * self.WHEEL_CIRCUMFERENCE  # cm/min
-            l_time = (l_dist / wheel_speed_linear) * 60  # seconds
+            self.l_time = (l_dist / wheel_speed_linear) * 60  # seconds
             
-            self.l_time_entry.delete(0, tk.END)
-            self.l_time_entry.insert(0, f"{l_time:.2f}")
-            self.log(f"✓ Linear time calculated: {l_time:.2f} seconds for {l_dist} cm at {l_rpm} RPM")
+            self.l_time_label.config(text=f"{self.l_time:.2f} sec")
+            self.log(f"✓ Linear time calculated: {self.l_time:.2f} seconds for {l_dist} cm at {l_rpm} RPM")
             
         except ValueError as e:
             messagebox.showerror("Error", f"Invalid input: {e}")
+            self.t_time_label.config(text="N/A")
+            self.l_time_label.config(text="N/A")
             
     def get_stage_positions(self):
         """Get stage positions from entry fields"""
@@ -260,20 +257,11 @@ class RobotControlGUI:
             if t_rpm <= 0:
                 raise ValueError("Turn speed must be positive")
             
-            # Get times from entry fields (user input or calculated)
-            t_time_str = self.t_time_entry.get().strip()
-            l_time_str = self.l_time_entry.get().strip()
+            # Check if times are calculated
+            if not hasattr(self, 't_time') or not hasattr(self, 'l_time'):
+                raise ValueError("Please calculate times first using the Calculate Times button")
             
-            if not t_time_str or not l_time_str:
-                raise ValueError("Please provide Turn Time and Linear Time (calculate or enter manually)")
-            
-            t_time = float(t_time_str)
-            l_time = float(l_time_str)
-            
-            if t_time <= 0 or l_time <= 0:
-                raise ValueError("Times must be positive values")
-            
-            return positions, l_dist, l_rpm, t_rpm, t_time, l_time
+            return positions, l_dist, l_rpm, t_rpm
             
         except ValueError as e:
             messagebox.showerror("Validation Error", str(e))
@@ -286,7 +274,7 @@ class RobotControlGUI:
         if validation is None:
             return
         
-        positions, l_dist, l_rpm, t_rpm, t_time, l_time = validation
+        positions, l_dist, l_rpm, t_rpm = validation
         
         self.log("="*50)
         self.log("Initializing Robot System...")
@@ -297,8 +285,6 @@ class RobotControlGUI:
         self.l_dist = l_dist
         self.l_rpm = l_rpm
         self.t_rpm = t_rpm
-        self.t_time = t_time
-        self.l_time = l_time
         
         # Calculate movement times
         self.calculate_movement_times()
@@ -364,7 +350,6 @@ class RobotControlGUI:
         self.start_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
         self.scan_btn.config(state=tk.NORMAL)
-        self.refresh_btn.config(state=tk.NORMAL)
         self.forward_btn.config(state=tk.NORMAL)
         self.left_btn.config(state=tk.NORMAL)
         self.right_btn.config(state=tk.NORMAL)
@@ -429,7 +414,6 @@ class RobotControlGUI:
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
         self.scan_btn.config(state=tk.DISABLED)
-        self.refresh_btn.config(state=tk.DISABLED)
         self.forward_btn.config(state=tk.DISABLED)
         self.left_btn.config(state=tk.DISABLED)
         self.right_btn.config(state=tk.DISABLED)
@@ -444,48 +428,6 @@ class RobotControlGUI:
         self.log(f"Movement times:")
         self.log(f"  - Linear: {self.l_time:.2f} sec for {self.l_dist} cm at {self.l_rpm} RPM")
         self.log(f"  - Turn: {self.t_time:.2f} sec for 90° at {self.t_rpm} RPM")
-    
-    def refresh_motors(self):
-        """Refresh motor connection and update times from entry fields"""
-        if not self.running:
-            return
-        
-        try:
-            self.log("\n→ Refreshing motors...")
-            
-            # Update times from entry fields
-            self.update_times_from_entries()
-            
-            # Send stop command to reset motor state
-            self.motor.setRPM(0, 0)
-            time.sleep(0.1)
-            
-            # Send a brief pulse to wake up motors
-            self.motor.setRPM(5, 5)
-            time.sleep(0.1)
-            self.motor.setRPM(0, 0)
-            time.sleep(0.1)
-            
-            self.log("✓ Motors refreshed and ready")
-            self.log(f"  - Turn Time: {self.t_time:.2f} sec")
-            self.log(f"  - Linear Time: {self.l_time:.2f} sec")
-            
-        except Exception as e:
-            self.log(f"✗ Refresh error: {e}")
-    
-    def update_times_from_entries(self):
-        """Update time values from entry fields before each action"""
-        try:
-            t_time_str = self.t_time_entry.get().strip()
-            l_time_str = self.l_time_entry.get().strip()
-            
-            if t_time_str:
-                self.t_time = float(t_time_str)
-            if l_time_str:
-                self.l_time = float(l_time_str)
-                
-        except ValueError:
-            pass  # Keep existing values if input is invalid
         
     def manual_move(self, direction):
         """Handle manual movement buttons"""
@@ -499,9 +441,6 @@ class RobotControlGUI:
     def _execute_manual_move(self, direction):
         """Execute manual movement in background thread"""
         try:
-            # Update times from entry fields before action
-            self.update_times_from_entries()
-            
             if direction == 'forward':
                 self.log(f"\n→ Moving FORWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
                 self.log(f"[DEBUG] Sending: setRPM({self.l_rpm}, {self.l_rpm})")
