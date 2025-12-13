@@ -434,34 +434,44 @@ class RobotControlGUI:
         try:
             if direction == 'forward':
                 self.log(f"\n→ Moving FORWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
-                self.motor.setRPM(self.l_rpm, self.l_rpm)
+                self.log(f"[DEBUG] Sending: setRPM({self.l_rpm}, {self.l_rpm})")
+                result = self.motor.setRPM(self.l_rpm, self.l_rpm)
+                self.log(f"[DEBUG] setRPM returned: {result}")
                 time.sleep(self.l_time)
                 self.motor.setRPM(0, 0)
                 self.log("✓ Forward movement complete")
                 
             elif direction == 'backward':
                 self.log(f"\n→ Moving BACKWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
-                self.motor.setRPM(-self.l_rpm, -self.l_rpm)
+                self.log(f"[DEBUG] Sending: setRPM({-self.l_rpm}, {-self.l_rpm})")
+                result = self.motor.setRPM(-self.l_rpm, -self.l_rpm)
+                self.log(f"[DEBUG] setRPM returned: {result}")
                 time.sleep(self.l_time)
                 self.motor.setRPM(0, 0)
                 self.log("✓ Backward movement complete")
                 
             elif direction == 'left':
                 self.log(f"\n→ Turning LEFT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
-                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                self.log(f"[DEBUG] Sending: setRPM({-self.t_rpm}, {self.t_rpm})")
+                result = self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                self.log(f"[DEBUG] setRPM returned: {result}")
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 self.log("✓ Left turn complete")
                 
             elif direction == 'right':
                 self.log(f"\n→ Turning RIGHT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
-                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                self.log(f"[DEBUG] Sending: setRPM({self.t_rpm}, {-self.t_rpm})")
+                result = self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                self.log(f"[DEBUG] setRPM returned: {result}")
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 self.log("✓ Right turn complete")
                 
         except Exception as e:
             self.log(f"✗ Movement error: {e}")
+            import traceback
+            self.log(f"[DEBUG] Traceback: {traceback.format_exc()}")
             
     def start_scan_sequence(self):
         """Start the scan sequence in a background thread"""
