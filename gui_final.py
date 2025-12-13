@@ -452,8 +452,11 @@ class RobotControlGUI:
                 
             elif direction == 'left':
                 self.log(f"\n→ Turning LEFT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
-                self.log(f"[DEBUG] Sending: setRPM({-self.t_rpm}, {self.t_rpm})")
-                result = self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                left_rpm = -float(self.t_rpm)
+                right_rpm = float(self.t_rpm)
+                self.log(f"[DEBUG] Calculated: left_rpm={left_rpm}, right_rpm={right_rpm}")
+                self.log(f"[DEBUG] Sending: setRPM({left_rpm}, {right_rpm})")
+                result = self.motor.setRPM(left_rpm, right_rpm)
                 self.log(f"[DEBUG] setRPM returned: {result}")
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
@@ -461,8 +464,11 @@ class RobotControlGUI:
                 
             elif direction == 'right':
                 self.log(f"\n→ Turning RIGHT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
-                self.log(f"[DEBUG] Sending: setRPM({self.t_rpm}, {-self.t_rpm})")
-                result = self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                left_rpm = float(self.t_rpm)
+                right_rpm = -float(self.t_rpm)
+                self.log(f"[DEBUG] Calculated: left_rpm={left_rpm}, right_rpm={right_rpm}")
+                self.log(f"[DEBUG] Sending: setRPM({left_rpm}, {right_rpm})")
+                result = self.motor.setRPM(left_rpm, right_rpm)
                 self.log(f"[DEBUG] setRPM returned: {result}")
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
