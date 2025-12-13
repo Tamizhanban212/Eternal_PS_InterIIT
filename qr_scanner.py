@@ -4,13 +4,25 @@ import numpy as np
 import csv
 import re
 import os
+import json
 from collections import defaultdict
 
 def parse_qr_data(qr_text):
     """
-    Parse QR code format: R{rack}_S{shelf}_ITM{item}
+    Parse QR code format: {"qr_raw_data": "R{rack}_S{shelf}_ITM{item}"}
+    or directly: R{rack}_S{shelf}_ITM{item}
     Returns: (rack_number, shelf_number, item_number) or None if invalid
     """
+    # Try to parse as JSON first
+    try:
+        data = json.loads(qr_text)
+        if isinstance(data, dict) and 'qr_raw_data' in data:
+            qr_text = data['qr_raw_data']
+    except (json.JSONDecodeError, ValueError):
+        # Not JSON, use original text
+        pass
+    
+    # Parse the actual QR code pattern
     pattern = r'R(\d+)_S(\d+)_ITM(\d+)'
     match = re.match(pattern, qr_text)
     if match:
@@ -146,7 +158,8 @@ def scan_qr_codes():
     
     print("QR Code Scanner Started")
     print("Press 'q' to quit")
-    print("Scanning for format: R{rack}_S{shelf}_ITM{item}")
+    print("Scanning for format: {\"qr_raw_data\": \"R{rack}_S{shelf}_ITM{item}\"}")
+    print("Also accepts: R{rack}_S{shelf}_ITM{item}")
     
     # Store previously detected codes to avoid repeated detections
     previous_data = None
