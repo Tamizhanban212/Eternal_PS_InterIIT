@@ -452,8 +452,8 @@ class RobotControlGUI:
                 
             elif direction == 'left':
                 self.log(f"\n→ Turning LEFT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
-                left_rpm = -float(self.t_rpm)
-                right_rpm = float(self.t_rpm)
+                left_rpm = float(self.t_rpm)
+                right_rpm = -float(self.t_rpm)
                 self.log(f"[DEBUG] Calculated: left_rpm={left_rpm}, right_rpm={right_rpm}")
                 self.log(f"[DEBUG] Sending: setRPM({left_rpm}, {right_rpm})")
                 result = self.motor.setRPM(left_rpm, right_rpm)
@@ -464,8 +464,8 @@ class RobotControlGUI:
                 
             elif direction == 'right':
                 self.log(f"\n→ Turning RIGHT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
-                left_rpm = float(self.t_rpm)
-                right_rpm = -float(self.t_rpm)
+                left_rpm = -float(self.t_rpm)
+                right_rpm = float(self.t_rpm)
                 self.log(f"[DEBUG] Calculated: left_rpm={left_rpm}, right_rpm={right_rpm}")
                 self.log(f"[DEBUG] Sending: setRPM({left_rpm}, {right_rpm})")
                 result = self.motor.setRPM(left_rpm, right_rpm)
@@ -571,7 +571,7 @@ class RobotControlGUI:
             if side == 'left':
                 # Left rectangle path
                 self.log("1. Turn LEFT 90°")
-                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -583,7 +583,7 @@ class RobotControlGUI:
                 time.sleep(0.5)
                 
                 self.log("3. Turn RIGHT 90°")
-                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -595,7 +595,7 @@ class RobotControlGUI:
                 time.sleep(0.5)
                 
                 self.log("5. Turn RIGHT 90°")
-                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -607,7 +607,7 @@ class RobotControlGUI:
                 time.sleep(0.5)
                 
                 self.log("7. Turn LEFT 90°")
-                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -615,7 +615,7 @@ class RobotControlGUI:
             else:  # right
                 # Right rectangle path
                 self.log("1. Turn RIGHT 90°")
-                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -627,7 +627,7 @@ class RobotControlGUI:
                 time.sleep(0.5)
                 
                 self.log("3. Turn LEFT 90°")
-                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -639,7 +639,7 @@ class RobotControlGUI:
                 time.sleep(0.5)
                 
                 self.log("5. Turn LEFT 90°")
-                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
@@ -651,7 +651,7 @@ class RobotControlGUI:
                 time.sleep(0.5)
                 
                 self.log("7. Turn RIGHT 90°")
-                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
                 self.motor.setRPM(0, 0)
                 time.sleep(0.5)
