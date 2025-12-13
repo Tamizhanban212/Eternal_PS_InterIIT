@@ -531,6 +531,11 @@ class RobotControlGUI:
                 self.log(f"\nReturning to home position ({self.Z_OFFSET} cm)...")
                 distance = abs(self.current_z_position - self.Z_OFFSET)
                 
+                # Compensate for 14.5 cm offset issue
+                if distance > 14.5:
+                    distance = distance - 14.5
+                    self.log(f"[Compensation] Adjusted distance by -14.5 cm")
+                
                 if self.current_z_position > self.Z_OFFSET:
                     direction = 0  # DOWN
                     direction_text = "DOWN"
