@@ -93,9 +93,14 @@ class RobotControlGUI:
         self.t_time_label = ttk.Label(config_frame, text="N/A", foreground="blue")
         self.t_time_label.grid(row=4, column=3, padx=5, pady=5)
         
+        # Calculated linear time display
+        ttk.Label(config_frame, text="Linear Time:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
+        self.l_time_label = ttk.Label(config_frame, text="N/A", foreground="blue")
+        self.l_time_label.grid(row=5, column=1, padx=5, pady=5)
+        
         # Calculate button
-        calc_btn = ttk.Button(config_frame, text="Calculate Turn Time", command=self.calculate_turn_time)
-        calc_btn.grid(row=5, column=0, columnspan=2, pady=10)
+        calc_btn = ttk.Button(config_frame, text="Calculate Times", command=self.calculate_times)
+        calc_btn.grid(row=6, column=0, columnspan=2, pady=10)
         
         # ===== Control Buttons Section =====
         control_frame = ttk.LabelFrame(main_frame, text="Control", padding="10")
@@ -163,9 +168,10 @@ class RobotControlGUI:
         self.status_text.see(tk.END)
         print(message)
         
-    def calculate_turn_time(self):
-        """Calculate time required for 90 degree turn"""
+    def calculate_times(self):
+        """Calculate time required for turn and linear movements"""
         try:
+            # Calculate turn time
             t_rpm = float(self.t_rpm_entry.get())
             if t_rpm <= 0:
                 raise ValueError("Turn speed must be positive")
@@ -187,9 +193,26 @@ class RobotControlGUI:
             self.t_time_label.config(text=f"{self.t_time:.2f} sec")
             self.log(f"✓ Turn time calculated: {self.t_time:.2f} seconds for 90° turn")
             
+            # Calculate linear time
+            l_rpm = float(self.l_rpm_entry.get())
+            l_dist = float(self.l_dist_entry.get())
+            
+            if l_rpm <= 0:
+                raise ValueError("Linear speed must be positive")
+            if l_dist <= 0:
+                raise ValueError("Linear distance must be positive")
+            
+            # Linear movement time
+            wheel_speed_linear = l_rpm * self.WHEEL_CIRCUMFERENCE  # cm/min
+            self.l_time = (l_dist / wheel_speed_linear) * 60  # seconds
+            
+            self.l_time_label.config(text=f"{self.l_time:.2f} sec")
+            self.log(f"✓ Linear time calculated: {self.l_time:.2f} seconds for {l_dist} cm at {l_rpm} RPM")
+            
         except ValueError as e:
-            messagebox.showerror("Error", f"Invalid turn speed: {e}")
+            messagebox.showerror("Error", f"Invalid input: {e}")
             self.t_time_label.config(text="N/A")
+            self.l_time_label.config(text="N/A")
             
     def get_stage_positions(self):
         """Get stage positions from entry fields"""
@@ -230,9 +253,9 @@ class RobotControlGUI:
             if t_rpm <= 0:
                 raise ValueError("Turn speed must be positive")
             
-            # Check if turn time is calculated
-            if not hasattr(self, 't_time'):
-                raise ValueError("Please calculate turn time first")
+            # Check if times are calculated
+            if not hasattr(self, 't_time') or not hasattr(self, 'l_time'):
+                raise ValueError("Please calculate times first using the Calculate Times button")
             
             return positions, l_dist, l_rpm, t_rpm
             
@@ -385,12 +408,8 @@ class RobotControlGUI:
         self.log("\n✓ System stopped successfully")
         
     def calculate_movement_times(self):
-        """Pre-calculate times for various movements"""
-        # Linear movement time
-        wheel_speed_cm_per_min = self.l_rpm * self.WHEEL_CIRCUMFERENCE
-        self.l_time = (self.l_dist / wheel_speed_cm_per_min) * 60  # seconds
-        
-        self.log(f"Movement times calculated:")
+        """Log the pre-calculated movement times"""
+        self.log(f"Movement times:")
         self.log(f"  - Linear: {self.l_time:.2f} sec for {self.l_dist} cm at {self.l_rpm} RPM")
         self.log(f"  - Turn: {self.t_time:.2f} sec for 90° at {self.t_rpm} RPM")
         
@@ -407,8 +426,10 @@ class RobotControlGUI:
         """Execute manual movement in background thread"""
         try:
             if direction == 'forward':
-                self.log(f"\n→ Moving FORWARD {self.l_dist} cm at {self.l_rpm} RPM...")
-                self.motor.setBothMotors(self.l_rpm, self.l_rpm, self.l_time, self.l_time)
+                self.log(f"\n→ Moving FORWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
+                self.motor.setRPM(self.l_rpm, self.l_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop()
                 self.log("✓ Forward movement complete")
                 
                 # After forward movement, execute full Z-axis scanning
@@ -416,18 +437,24 @@ class RobotControlGUI:
                 self.execute_z_axis_scan()
                 
             elif direction == 'backward':
-                self.log(f"\n→ Moving BACKWARD {self.l_dist} cm at {self.l_rpm} RPM...")
-                self.motor.setBothMotors(-self.l_rpm, -self.l_rpm, self.l_time, self.l_time)
+                self.log(f"\n→ Moving BACKWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
+                self.motor.setRPM(-self.l_rpm, -self.l_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop()
                 self.log("✓ Backward movement complete")
                 
             elif direction == 'left':
-                self.log(f"\n→ Turning LEFT 90° at {self.t_rpm} RPM...")
-                self.motor.setBothMotors(-self.t_rpm, self.t_rpm, self.t_time, self.t_time)
+                self.log(f"\n→ Turning LEFT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop()
                 self.log("✓ Left turn complete")
                 
             elif direction == 'right':
-                self.log(f"\n→ Turning RIGHT 90° at {self.t_rpm} RPM...")
-                self.motor.setBothMotors(self.t_rpm, -self.t_rpm, self.t_time, self.t_time)
+                self.log(f"\n→ Turning RIGHT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop()
                 self.log("✓ Right turn complete")
                 
         except Exception as e:
@@ -516,60 +543,76 @@ class RobotControlGUI:
             if side == 'left':
                 # Left rectangle path
                 self.log("1. Turn LEFT 90°")
-                self.motor.setBothMotors(-self.t_rpm, self.t_rpm, self.t_time, self.t_time)
-                time.sleep(0.5)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log(f"2. Forward {self.l_dist} cm")
-                self.motor.setBothMotors(self.t_rpm, self.t_rpm, self.l_time, self.l_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, self.t_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log("3. Turn RIGHT 90°")
-                self.motor.setBothMotors(self.t_rpm, -self.t_rpm, self.t_time, self.t_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log(f"4. Forward {self.l_dist} cm")
-                self.motor.setBothMotors(self.t_rpm, self.t_rpm, self.l_time, self.l_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, self.t_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log("5. Turn RIGHT 90°")
-                self.motor.setBothMotors(self.t_rpm, -self.t_rpm, self.t_time, self.t_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log(f"6. Forward {self.l_dist} cm")
-                self.motor.setBothMotors(self.t_rpm, self.t_rpm, self.l_time, self.l_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, self.t_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log("7. Turn LEFT 90°")
-                self.motor.setBothMotors(-self.t_rpm, self.t_rpm, self.t_time, self.t_time)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
             else:  # right
                 # Right rectangle path
                 self.log("1. Turn RIGHT 90°")
-                self.motor.setBothMotors(self.t_rpm, -self.t_rpm, self.t_time, self.t_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log(f"2. Forward {self.l_dist} cm")
-                self.motor.setBothMotors(self.t_rpm, self.t_rpm, self.l_time, self.l_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, self.t_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log("3. Turn LEFT 90°")
-                self.motor.setBothMotors(-self.t_rpm, self.t_rpm, self.t_time, self.t_time)
-                time.sleep(0.5)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log(f"4. Forward {self.l_dist} cm")
-                self.motor.setBothMotors(self.t_rpm, self.t_rpm, self.l_time, self.l_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, self.t_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log("5. Turn LEFT 90°")
-                self.motor.setBothMotors(-self.t_rpm, self.t_rpm, self.t_time, self.t_time)
-                time.sleep(0.5)
+                self.motor.setRPM(-self.t_rpm, self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log(f"6. Forward {self.l_dist} cm")
-                self.motor.setBothMotors(self.t_rpm, self.t_rpm, self.l_time, self.l_time)
-                time.sleep(0.5)
+                self.motor.setRPM(self.t_rpm, self.t_rpm)
+                time.sleep(self.l_time)
+                self.motor.stop(duration=0.5)
                 
                 self.log("7. Turn RIGHT 90°")
-                self.motor.setBothMotors(self.t_rpm, -self.t_rpm, self.t_time, self.t_time)
+                self.motor.setRPM(self.t_rpm, -self.t_rpm)
+                time.sleep(self.t_time)
+                self.motor.stop(duration=0.5)
             
             self.motor.stop(duration=0.5)
             self.log("✓ Obstacle avoidance complete!")
