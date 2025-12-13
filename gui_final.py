@@ -381,10 +381,16 @@ class RobotControlGUI:
         
         # Stop QR scanner
         self.scanner_running = False
+        if self.scanner_thread and self.scanner_thread.is_alive():
+            self.log("Waiting for scanner thread to stop...")
+            self.scanner_thread.join(timeout=2.0)
+        
         if self.cap:
-            time.sleep(0.5)
+            time.sleep(0.3)
             self.cap.release()
+            self.cap = None
             cv2.destroyAllWindows()
+            time.sleep(0.2)
             self.log("✓ Camera released")
         
         # Save final grid
@@ -400,6 +406,9 @@ class RobotControlGUI:
             self.log("✓ Z-axis cleanup complete")
         except Exception as e:
             self.log(f"✗ Z-axis cleanup error: {e}")
+        
+        # Reset scanner thread reference
+        self.scanner_thread = None
         
         # Update UI
         self.start_btn.config(state=tk.NORMAL)
