@@ -541,8 +541,8 @@ class RobotControlGUI:
                 distance = abs(self.current_z_position - self.Z_OFFSET)
                 
                 # Compensate for 14.5 cm offset issue
-                if distance > 17.5:
-                    distance = distance - 17.5
+                if distance > 14.5:
+                    distance = distance - 14.5
                     self.log(f"[Compensation] Adjusted distance by -14.5 cm")
                 
                 if self.current_z_position > self.Z_OFFSET:
