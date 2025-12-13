@@ -49,6 +49,7 @@ class RobotControlGUI:
         
         # Movement state
         self.in_scanning_mode = False
+        self.scan_mode_active = False
         
         self.create_widgets()
         
@@ -115,6 +116,9 @@ class RobotControlGUI:
         
         self.stop_btn = ttk.Button(btn_frame1, text="STOP", command=self.stop_system, width=15, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
+        
+        self.scan_btn = ttk.Button(btn_frame1, text="SCAN", command=self.start_scan_sequence, width=15, state=tk.DISABLED)
+        self.scan_btn.pack(side=tk.LEFT, padx=5)
         
         # Direction buttons
         btn_frame2 = ttk.Frame(control_frame)
@@ -345,6 +349,7 @@ class RobotControlGUI:
         self.stop_requested = False
         self.start_btn.config(state=tk.DISABLED)
         self.stop_btn.config(state=tk.NORMAL)
+        self.scan_btn.config(state=tk.NORMAL)
         self.forward_btn.config(state=tk.NORMAL)
         self.left_btn.config(state=tk.NORMAL)
         self.right_btn.config(state=tk.NORMAL)
@@ -352,7 +357,7 @@ class RobotControlGUI:
         self.obstacle_left_btn.config(state=tk.NORMAL)
         self.obstacle_right_btn.config(state=tk.NORMAL)
         
-        self.log("\n✓ System ready! Press Forward to start scanning sequence")
+        self.log("\n✓ System ready! Use direction buttons or press SCAN for scanning sequence")
         self.log("="*50)
         
     def stop_system(self):
@@ -367,7 +372,8 @@ class RobotControlGUI:
         # Stop motors
         if self.motor:
             try:
-                self.motor.stop()
+                self.motor.setRPM(0, 0)
+                time.sleep(0.2)
                 self.motor.close()
                 self.log("✓ Motors stopped")
             except Exception as e:
@@ -398,6 +404,7 @@ class RobotControlGUI:
         # Update UI
         self.start_btn.config(state=tk.NORMAL)
         self.stop_btn.config(state=tk.DISABLED)
+        self.scan_btn.config(state=tk.DISABLED)
         self.forward_btn.config(state=tk.DISABLED)
         self.left_btn.config(state=tk.DISABLED)
         self.right_btn.config(state=tk.DISABLED)
@@ -429,37 +436,41 @@ class RobotControlGUI:
                 self.log(f"\n→ Moving FORWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
                 self.motor.setRPM(self.l_rpm, self.l_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop()
+                self.motor.setRPM(0, 0)
                 self.log("✓ Forward movement complete")
-                
-                # After forward movement, execute full Z-axis scanning
-                self.log("\nStarting Z-axis scanning sequence...")
-                self.execute_z_axis_scan()
                 
             elif direction == 'backward':
                 self.log(f"\n→ Moving BACKWARD {self.l_dist} cm at {self.l_rpm} RPM for {self.l_time:.2f}s...")
                 self.motor.setRPM(-self.l_rpm, -self.l_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop()
+                self.motor.setRPM(0, 0)
                 self.log("✓ Backward movement complete")
                 
             elif direction == 'left':
                 self.log(f"\n→ Turning LEFT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
                 self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop()
+                self.motor.setRPM(0, 0)
                 self.log("✓ Left turn complete")
                 
             elif direction == 'right':
                 self.log(f"\n→ Turning RIGHT 90° at {self.t_rpm} RPM for {self.t_time:.2f}s...")
                 self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop()
+                self.motor.setRPM(0, 0)
                 self.log("✓ Right turn complete")
                 
         except Exception as e:
             self.log(f"✗ Movement error: {e}")
             
+    def start_scan_sequence(self):
+        """Start the scan sequence in a background thread"""
+        if not self.running or self.stop_requested:
+            return
+        
+        thread = threading.Thread(target=self.execute_z_axis_scan, daemon=True)
+        thread.start()
+        
     def execute_z_axis_scan(self):
         """Execute full Z-axis scanning through all stages"""
         if self.stop_requested:
@@ -538,83 +549,96 @@ class RobotControlGUI:
             self.log("="*50)
             
             # Stop current movement
-            self.motor.stop(duration=0.5)
+            self.motor.setRPM(0, 0)
+            time.sleep(0.5)
             
             if side == 'left':
                 # Left rectangle path
                 self.log("1. Turn LEFT 90°")
                 self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log(f"2. Forward {self.l_dist} cm")
                 self.motor.setRPM(self.t_rpm, self.t_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log("3. Turn RIGHT 90°")
                 self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log(f"4. Forward {self.l_dist} cm")
                 self.motor.setRPM(self.t_rpm, self.t_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log("5. Turn RIGHT 90°")
                 self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log(f"6. Forward {self.l_dist} cm")
                 self.motor.setRPM(self.t_rpm, self.t_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log("7. Turn LEFT 90°")
                 self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
             else:  # right
                 # Right rectangle path
                 self.log("1. Turn RIGHT 90°")
                 self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log(f"2. Forward {self.l_dist} cm")
                 self.motor.setRPM(self.t_rpm, self.t_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log("3. Turn LEFT 90°")
                 self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log(f"4. Forward {self.l_dist} cm")
                 self.motor.setRPM(self.t_rpm, self.t_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log("5. Turn LEFT 90°")
                 self.motor.setRPM(-self.t_rpm, self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log(f"6. Forward {self.l_dist} cm")
                 self.motor.setRPM(self.t_rpm, self.t_rpm)
                 time.sleep(self.l_time)
-                self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
                 
                 self.log("7. Turn RIGHT 90°")
                 self.motor.setRPM(self.t_rpm, -self.t_rpm)
                 time.sleep(self.t_time)
-                self.motor.stop(duration=0.5)
-            
-            self.motor.stop(duration=0.5)
+                self.motor.setRPM(0, 0)
+                time.sleep(0.5)
             self.log("✓ Obstacle avoidance complete!")
             self.log("="*50)
             
